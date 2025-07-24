@@ -1,87 +1,463 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal del Ejecutivo</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <title>Acceso al Portal</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
     <style>
-        :root { --azul-principal: #005A9C; --gris-claro: #f4f7fa; --borde-color: #dee2e6; --texto-color: #333; }
-        body { font-family: system-ui, sans-serif; margin: 0; background-color: var(--gris-claro); display: flex; align-items: center; justify-content: center; height: 100vh; }
-        .login-card { background-color: white; border: 1px solid var(--borde-color); border-radius: 8px; padding: 2rem; width: 100%; max-width: 400px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h1 { margin-top: 0; color: var(--azul-principal); text-align: center; }
-        label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem; display: block; }
-        input { width: 100%; padding: 0.75rem; font-size: 1rem; border: 1px solid var(--borde-color); border-radius: 4px; box-sizing: border-box; margin-bottom: 1rem; }
-        button { width: 100%; padding: 0.75rem; font-weight: 600; border: none; cursor: pointer; border-radius: 4px; color: white; background-color: var(--azul-principal); font-size: 1rem; transition: background-color 0.2s; }
-        button:hover { background-color: #004170; }
-        .secondary-action { background-color: #6c757d; }
-        .secondary-action:hover { background-color: #5a6268; }
-        #error-message { color: #dc3545; text-align: center; margin-top: 1rem; display: none; }
+        :root {
+            --font-main: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            --transition-speed: 0.3s;
+        }
+        [data-theme="dark"] {
+            --bg-primary: #1a1b26; --bg-secondary: #24283b; --bg-tertiary: #414868;
+            --text-primary: #c0caf5; --text-secondary: #a9b1d6; --accent: #7dcfff;
+            --accent-glow: rgba(125, 207, 255, 0.2); --border-color: #3b3f51;
+            --success: #9ece6a; --pending: #e0af68; --danger: #f7768e; --confirmed: #7aa2f7;
+            --modal-bg: rgba(36, 40, 59, 0.85);
+        }
+        [data-theme="light"] {
+            --bg-primary: #f0f2f5; --bg-secondary: #ffffff; --bg-tertiary: #e9ecef;
+            --text-primary: #212529; --text-secondary: #495057; --accent: #007bff;
+            --accent-glow: rgba(0, 123, 255, 0.15); --border-color: #dee2e6;
+            --success: #28a745; --pending: #ffc107; --danger: #dc3545; --confirmed: #007bff;
+            --modal-bg: rgba(255, 255, 255, 0.85);
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: var(--font-main); margin: 0;
+            background-color: var(--bg-primary); color: var(--text-primary);
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 1rem 1.5rem; }
+        .header-controls {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 1.5rem; background-color: var(--bg-secondary);
+            border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--border-color);
+        }
+        .header-controls h1 { margin: 0; font-size: 1.5rem; color: var(--text-primary); font-weight: 600; }
+        .action-buttons { display: flex; align-items: center; gap: 1rem; }
+
+        input, textarea, select, button {
+            width: 100%; padding: 0.6rem 0.75rem; font-size: 0.9rem;
+            border: 1px solid var(--border-color); border-radius: 8px;
+            box-sizing: border-box; margin-bottom: 0;
+            background: var(--bg-tertiary); color: var(--text-primary);
+        }
+        label { font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; display: block; color: var(--text-secondary); }
+        .form-grid > div { margin-bottom: 0.8rem; }
+        #submit-button { margin-top: 0.8rem !important; }
+
+        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+        select:disabled { background-color: var(--bg-primary); opacity: 0.5; cursor: not-allowed; }
+        button { font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; }
+        button#submit-button { background-color: var(--accent); color: var(--bg-secondary); }
+        button:hover { filter: brightness(1.1); }
+        .icon-btn {
+            background: var(--danger); border-color: var(--danger); color: white;
+            padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; display: flex;
+            align-items: center; gap: 0.5rem; font-weight: 600; width: auto;
+        }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.5rem; }
+        .form-grid .full-width { grid-column: 1 / -1; }
+        
+        .card { background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card h2 { margin-top: 0; margin-bottom: 1.5rem; font-size: 1.2rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
+
+        #login-view { display: flex; align-items: center; justify-content: center; height: 100vh; padding: 1.5rem; }
+        .login-card { max-width: 450px; width: 100%; }
+        #error-message { color: var(--danger); text-align: center; margin-top: 1rem; display: none; }
+        .secondary-action { background-color: var(--bg-tertiary); color: var(--text-primary); margin-top: 1rem; }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        tbody tr:hover { background-color: var(--bg-tertiary); }
+        .status { padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; text-align: center; display: inline-block; font-size: 0.8rem; border: 1px solid currentColor; background: transparent;}
+        .status-Pendiente { color: var(--pending); }
+        .status-Confirmado, .status-En\.Progreso { color: var(--confirmed); }
+        .status-Completado { color: var(--success); }
+        
+        .action-cell { display: flex; gap: 0.5rem; }
+        .action-cell button { padding: 0.4rem 0.8rem; font-size: 0.85rem; width: auto; }
+        .btn-detail { background-color: var(--accent); color: var(--bg-secondary); }
+        .btn-edit { background-color: var(--bg-tertiary); color: var(--text-primary); }
+        .btn-delete { background-color: var(--danger); color: white; }
+        
+        .theme-switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .theme-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-tertiary); transition: var(--transition-speed); border-radius: 26px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: var(--transition-speed); border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity var(--transition-speed); }
+        .modal-overlay.visible { opacity: 1; visibility: visible; }
+        .modal-container { background: var(--modal-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 16px; width: 90%; max-width: 700px; padding: 2rem; transform: scale(0.9); transition: transform var(--transition-speed); }
+        .modal-overlay.visible .modal-container { transform: scale(1); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+        .modal-header h2 { margin: 0; color: var(--accent); }
+        .modal-close-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; padding: 0; }
+        .modal-content .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; }
+        .modal-content .detail-item strong { display: block; color: var(--text-secondary); margin-bottom: 0.25rem; font-size: 0.875rem; text-transform: uppercase; }
+        .modal-content .detail-item span { color: var(--text-primary); font-size: 1rem; }
+        .modal-content .full-width { grid-column: 1 / -1; }
+        #modal-obs-planificacion {
+            display: block; white-space: pre-wrap; background-color: var(--bg-primary);
+            padding: 0.5rem; border-radius: 6px; margin-top: 0.5rem; max-height: 150px;
+            overflow-y: auto; font-style: italic;
+        }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <h1>Acceso al Portal</h1>
-        <form id="login-form">
-            <label for="email">Correo Electrónico</label>
-            <input type="email" id="email" required>
-            <label for="password">Contraseña</label>
-            <input type="password" id="password" required>
-            <button type="submit">Iniciar Sesión</button>
-        </form>
-        <hr style="margin: 1.5rem 0;">
-        <button id="register-button" class="secondary-action">Registrar Nuevo Vendedor</button>
-        <p id="error-message"></p>
+
+    <div id="login-view">
+        <div class="card login-card">
+            <h2>Acceso de Ejecutivo</h2>
+            <form id="login-form">
+                <label for="email">Correo Electrónico</label>
+                <input type="email" id="email" required>
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" required>
+                <button type="submit">Iniciar Sesión</button>
+            </form>
+            <button id="register-button" class="secondary-action">Registrar Nuevo Ejecutivo</button>
+            <p id="error-message"></p>
+        </div>
     </div>
 
-    <script src="app.js"></script>
+    <div id="ejecutivo-view" style="display: none;">
+        <div class="container">
+            <div class="header-controls">
+                <h1 id="welcome-message">Portal del Ejecutivo</h1>
+                <div class="action-buttons">
+                    <button id="logout-button" class="icon-btn">Cerrar Sesión</button>
+                    <div class="theme-switch-wrapper">
+                        <label class="theme-switch">
+                            <input type="checkbox" id="theme-toggle">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2 id="form-title">📝 Generar Nueva Solicitud</h2>
+                <form id="form-ejecutivo">
+                    <input type="hidden" id="edit-service-id">
+                    <div class="form-grid">
+                        <div><label for="numRequerimiento">Nº Requerimiento</label><input type="text" id="numRequerimiento" required></div>
+                        <div><label for="numNV">Nº de NV</label><input type="text" id="numNV" required></div>
+                        <div class="full-width"><label for="cliente">Nombre del Cliente</label><input type="text" id="cliente" required></div>
+                        <div>
+                            <label for="tieneRepuestos">¿Tiene Repuestos?</label>
+                            <select id="tieneRepuestos" required>
+                                <option value="No" selected>No</option>
+                                <option value="Sí">Sí</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="repuestosDespachados">¿Repuestos Despachados?</label>
+                            <select id="repuestosDespachados" required disabled>
+                                <option value="No" selected>No</option>
+                                <option value="Pendiente">Pendiente</option>
+                                <option value="Sí">Sí</option>
+                            </select>
+                        </div>
+                        <div class="full-width"><label for="direccion">Dirección</label><input type="text" id="direccion" required></div>
+                        <div><label for="nomContacto">Nombre Contacto</label><input type="text" id="nomContacto" required></div>
+                        <div><label for="numContacto">Teléfono Contacto</label><input type="tel" id="numContacto" required></div>
+                        <div class="full-width"><label for="infoServicio">Información del Servicio</label><textarea id="infoServicio" rows="3" required></textarea></div>
+                    </div>
+                    <button type="submit" id="submit-button">Generar Solicitud</button>
+                </form>
+            </div>
+            <div class="card">
+                <h2>📂 Mis Solicitudes Enviadas</h2>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Nº Req.</th><th>Nº NV</th><th>Cliente</th><th>Rep.</th><th>Rep. Desp.</th><th>Últ. Modificación</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <tbody id="tabla-mis-solicitudes"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="service-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2 id="modal-req-num"></h2>
+                <button class="modal-close-btn" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-content">
+                <div class="detail-grid">
+                    <div class="detail-item"><strong>Cliente:</strong> <span id="modal-cliente"></span></div>
+                    <div class="detail-item"><strong>Nº NV:</strong> <span id="modal-numNV"></span></div>
+                    <div class="detail-item full-width"><strong>Dirección:</strong> <span id="modal-direccion"></span></div>
+                    <div class="detail-item"><strong>Contacto:</strong> <span id="modal-contacto"></span></div>
+                    <div class="detail-item"><strong>Teléfono:</strong> <span id="modal-telefono"></span></div>
+                    <div class="detail-item"><strong>Tiene Repuestos:</strong> <span id="modal-tieneRepuestos"></span></div>
+                    <div class="detail-item"><strong>Repuestos Despachados:</strong> <span id="modal-repDespachados"></span></div>
+                    <div class="detail-item"><strong>Estado Actual:</strong> <span id="modal-estado"></span></div>
+                    <div class="detail-item"><strong>Fecha Creación:</strong> <span id="modal-fecha-solicitud"></span></div>
+                    <div class="detail-item"><strong>Última Edición:</strong> <span id="modal-fecha-edicion"></span></div>
+                    <div class="detail-item full-width"><strong>Info. Servicio:</strong> <span id="modal-info-servicio"></span></div>
+                    <div class="detail-item full-width">
+                        <strong>📝 Observaciones de Planificación:</strong>
+                        <span id="modal-obs-planificacion"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <script>
-        const loginForm = document.getElementById('login-form');
-        const registerButton = document.getElementById('register-button');
-        const emailInput = document.getElementById('email');
-        const passwordInput = document.getElementById('password');
-        const errorMessage = document.getElementById('error-message');
+        const firebaseConfig = {
+          apiKey: "AIzaSyA9tUGGmMqk85Hljw8H1XoTfX2U5iQu85c",
+          authDomain: "control-de-servicios-b8e34.firebaseapp.com",
+          projectId: "control-de-servicios-b8e34",
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        let currentUser = null;
+        let misServiciosCache = [];
 
-        // Al enviar el formulario de inicio de sesión
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = emailInput.value;
-            const password = passwordInput.value;
+        // --- FUNCIONES DE BASE DE DATOS Y AYUDA ---
+        const obtenerServicios = async () => (await db.collection('servicios').get()).docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const crearServicio = async (data) => await db.collection('servicios').add(data);
+        const actualizarServicio = async (id, data) => await db.collection('servicios').doc(id).update(data);
+        const eliminarServicio = async (id) => await db.collection('servicios').doc(id).delete();
+        
+        function formatTimestamp(timestamp) {
+            if (!timestamp || typeof timestamp.toDate !== 'function') return 'N/A';
+            const date = timestamp.toDate();
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}:${minutes}`;
+        }
 
-            firebase.auth().signInWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    // Si el inicio de sesión es exitoso, redirigir al portal del vendedor
-                    window.location.href = 'vendedor.html';
-                })
-                .catch((error) => {
-                    // Mostrar error
-                    errorMessage.textContent = 'Error: ' + error.message;
-                    errorMessage.style.display = 'block';
-                });
+        const ui = {
+            loginView: document.getElementById('login-view'),
+            ejecutivoView: document.getElementById('ejecutivo-view'),
+            loginForm: document.getElementById('login-form'),
+            registerButton: document.getElementById('register-button'),
+            emailInput: document.getElementById('email'),
+            passwordInput: document.getElementById('password'),
+            errorMessage: document.getElementById('error-message'),
+            formEjecutivo: document.getElementById('form-ejecutivo'),
+            formTitle: document.getElementById('form-title'),
+            submitButton: document.getElementById('submit-button'),
+            editServiceId: document.getElementById('edit-service-id'),
+            misSolicitudesTbody: document.getElementById('tabla-mis-solicitudes'),
+            logoutButton: document.getElementById('logout-button'),
+            welcomeMessage: document.getElementById('welcome-message'),
+            themeToggle: document.getElementById('theme-toggle'),
+            tieneRepuestos: document.getElementById('tieneRepuestos'),
+            repuestosDespachados: document.getElementById('repuestosDespachados'),
+            modal: {
+                overlay: document.getElementById('service-modal'),
+                closeBtn: document.getElementById('modal-close'),
+                reqNum: document.getElementById('modal-req-num'),
+                cliente: document.getElementById('modal-cliente'),
+                numNV: document.getElementById('modal-numNV'),
+                direccion: document.getElementById('modal-direccion'),
+                contacto: document.getElementById('modal-contacto'),
+                telefono: document.getElementById('modal-telefono'),
+                tieneRepuestos: document.getElementById('modal-tieneRepuestos'),
+                repDespachados: document.getElementById('modal-repDespachados'),
+                estado: document.getElementById('modal-estado'),
+                fechaSolicitud: document.getElementById('modal-fecha-solicitud'),
+                fechaEdicion: document.getElementById('modal-fecha-edicion'),
+                infoServicio: document.getElementById('modal-info-servicio'),
+                obsPlanificacion: document.getElementById('modal-obs-planificacion'),
+            }
+        };
+
+        // --- LÓGICA DE AUTENTICACIÓN ---
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                currentUser = user;
+                ui.welcomeMessage.textContent = `Bienvenido, Ejecutivo`;
+                ui.loginView.style.display = 'none';
+                ui.ejecutivoView.style.display = 'block';
+                await renderizarMisSolicitudes();
+            } else {
+                currentUser = null;
+                ui.loginView.style.display = 'flex';
+                ui.ejecutivoView.style.display = 'none';
+            }
         });
         
-        // Al hacer clic en el botón de registrar
-        registerButton.addEventListener('click', () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
+        ui.loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            auth.signInWithEmailAndPassword(ui.emailInput.value, ui.passwordInput.value)
+                .catch((error) => { ui.errorMessage.textContent = 'Error: ' + error.message; ui.errorMessage.style.display = 'block'; });
+        });
+        ui.registerButton.addEventListener('click', () => {
+            if (!ui.emailInput.value || !ui.passwordInput.value) {
+                ui.errorMessage.textContent = 'Ingresa correo y contraseña para registrar.';
+                ui.errorMessage.style.display = 'block'; return;
+            }
+            auth.createUserWithEmailAndPassword(ui.emailInput.value, ui.passwordInput.value)
+                .then(() => { alert('¡Ejecutivo registrado! Ahora inicia sesión.'); ui.loginForm.reset(); })
+                .catch((error) => { ui.errorMessage.textContent = 'Error: ' + error.message; ui.errorMessage.style.display = 'block'; });
+        });
 
-            if (!email || !password) {
-                errorMessage.textContent = 'Por favor, completa el correo y la contraseña para registrarte.';
-                errorMessage.style.display = 'block';
+
+        // --- LÓGICA DEL PORTAL ---
+        async function renderizarMisSolicitudes() {
+            if (!currentUser) return;
+            const todosLosServicios = await obtenerServicios();
+            misServiciosCache = todosLosServicios
+                .filter(s => s.vendedor === currentUser.email)
+                .sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+
+            ui.misSolicitudesTbody.innerHTML = '';
+            if (misServiciosCache.length === 0) {
+                ui.misSolicitudesTbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Aún no has enviado solicitudes.</td></tr>`;
                 return;
             }
+            misServiciosCache.forEach(s => {
+                const tr = document.createElement('tr');
+                const estadoClass = s.estado.replace(/\s+/g, '.');
+                let fechaMostrada = s.fechaEdicion ? `(Ed.) ${formatTimestamp(s.fechaEdicion)}` : s.fechaSolicitud || 'N/A';
+                tr.innerHTML = `
+                    <td>${s.numRequerimiento || 'N/A'}</td><td>${s.numNV || 'N/A'}</td><td>${s.cliente || 'N/A'}</td>
+                    <td>${s.tieneRepuestos || 'No'}</td><td>${s.tieneRepuestos === 'Sí' ? (s.repuestosDespachados || 'Pendiente') : 'N/A'}</td>
+                    <td>${fechaMostrada}</td><td><span class="status status-${estadoClass}">${s.estado}</span></td>
+                    <td><div class="action-cell">
+                            <button class="btn-detail" data-id="${s.id}">Detalle</button>
+                            <button class="btn-edit" data-id="${s.id}">Editar</button>
+                            <button class="btn-delete" data-id="${s.id}">Eliminar</button>
+                    </div></td>`;
+                ui.misSolicitudesTbody.appendChild(tr);
+            });
+        }
 
-            firebase.auth().createUserWithEmailAndPassword(email, password)
-                .then((userCredential) => {
-                    alert('¡Vendedor registrado con éxito! Ahora inicia sesión.');
-                    loginForm.reset();
-                })
-                .catch((error) => {
-                    errorMessage.textContent = 'Error: ' + error.message;
-                    errorMessage.style.display = 'block';
-                });
+        ui.misSolicitudesTbody.addEventListener('click', async (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+            const serviceId = button.dataset.id;
+            if (!serviceId) return;
+
+            if (button.classList.contains('btn-delete')) {
+                if (confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
+                    await eliminarServicio(serviceId);
+                    await renderizarMisSolicitudes();
+                }
+            } else if (button.classList.contains('btn-edit')) {
+                const servicioAEditar = misServiciosCache.find(s => s.id === serviceId);
+                if (servicioAEditar) {
+                    ui.formEjecutivo.numRequerimiento.value = servicioAEditar.numRequerimiento || '';
+                    ui.formEjecutivo.numNV.value = servicioAEditar.numNV || '';
+                    ui.formEjecutivo.cliente.value = servicioAEditar.cliente || '';
+                    ui.formEjecutivo.tieneRepuestos.value = servicioAEditar.tieneRepuestos || 'No';
+                    ui.formEjecutivo.repuestosDespachados.value = servicioAEditar.repuestosDespachados || 'No';
+                    ui.formEjecutivo.direccion.value = servicioAEditar.direccion || '';
+                    ui.formEjecutivo.nomContacto.value = servicioAEditar.nomContacto || '';
+                    ui.formEjecutivo.numContacto.value = servicioAEditar.numContacto || '';
+                    ui.formEjecutivo.infoServicio.value = servicioAEditar.infoServicio || '';
+                    ui.editServiceId.value = serviceId;
+                    ui.formTitle.textContent = `✏️ Editando Req #${servicioAEditar.numRequerimiento}`;
+                    ui.submitButton.textContent = 'Guardar Cambios';
+                    ui.tieneRepuestos.dispatchEvent(new Event('change'));
+                    ui.formEjecutivo.scrollIntoView({ behavior: 'smooth' });
+                }
+            } else if (button.classList.contains('btn-detail')) {
+                const service = misServiciosCache.find(s => s.id === serviceId);
+                if(service) openModal(service);
+            }
         });
+
+        ui.formEjecutivo.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const serviceId = ui.editServiceId.value;
+            const datosServicio = {
+                numRequerimiento: ui.formEjecutivo.numRequerimiento.value, numNV: ui.formEjecutivo.numNV.value,
+                cliente: ui.formEjecutivo.cliente.value, tieneRepuestos: ui.formEjecutivo.tieneRepuestos.value,
+                repuestosDespachados: ui.formEjecutivo.tieneRepuestos.value === 'Sí' ? ui.formEjecutivo.repuestosDespachados.value : 'N/A',
+                direccion: ui.formEjecutivo.direccion.value, nomContacto: ui.formEjecutivo.nomContacto.value,
+                numContacto: ui.formEjecutivo.numContacto.value, infoServicio: ui.formEjecutivo.infoServicio.value,
+            };
+
+            if (serviceId) {
+                datosServicio.fechaEdicion = firebase.firestore.FieldValue.serverTimestamp();
+                await actualizarServicio(serviceId, datosServicio);
+                alert('¡Servicio actualizado con éxito!');
+            } else {
+                datosServicio.vendedor = currentUser.email;
+                datosServicio.fechaSolicitud = new Date().toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                datosServicio.estado = 'Pendiente';
+                datosServicio.timestamp = firebase.firestore.FieldValue.serverTimestamp();
+                await crearServicio(datosServicio);
+                alert('¡Solicitud generada con éxito!');
+            }
+
+            ui.formEjecutivo.reset();
+            ui.editServiceId.value = '';
+            ui.formTitle.textContent = '📝 Generar Nueva Solicitud';
+            ui.submitButton.textContent = 'Generar Solicitud';
+            ui.repuestosDespachados.disabled = true;
+            await renderizarMisSolicitudes();
+        });
+
+        ui.tieneRepuestos.addEventListener('change', () => {
+            if (ui.tieneRepuestos.value === 'Sí') {
+                ui.repuestosDespachados.disabled = false;
+                if (ui.editServiceId.value === '') ui.repuestosDespachados.value = 'Pendiente';
+            } else {
+                ui.repuestosDespachados.disabled = true;
+                ui.repuestosDespachados.value = 'No';
+            }
+        });
+
+        // --- LÓGICA DEL MODAL ---
+        function openModal(service) {
+            ui.modal.reqNum.textContent = `Detalles: Req #${service.numRequerimiento || 'N/A'}`;
+            ui.modal.cliente.textContent = service.cliente || 'N/A';
+            ui.modal.numNV.textContent = service.numNV || 'N/A';
+            ui.modal.direccion.textContent = service.direccion || 'N/A';
+            ui.modal.contacto.textContent = service.nomContacto || 'N/A';
+            ui.modal.telefono.textContent = service.numContacto || 'N/A';
+            ui.modal.tieneRepuestos.textContent = service.tieneRepuestos || 'N/A';
+            ui.modal.repDespachados.textContent = service.tieneRepuestos === 'Sí' ? (service.repuestosDespachados || 'Pendiente') : 'N/A';
+            ui.modal.estado.textContent = service.estado || 'N/A';
+            ui.modal.fechaSolicitud.textContent = service.fechaSolicitud || 'N/A';
+            ui.modal.fechaEdicion.textContent = service.fechaEdicion ? formatTimestamp(service.fechaEdicion) : 'Sin ediciones';
+            ui.modal.infoServicio.textContent = service.infoServicio || 'N/A';
+            ui.modal.obsPlanificacion.textContent = service.observacionesPlanificacion || 'Sin observaciones.';
+            ui.modal.overlay.classList.add('visible');
+        }
+
+        function closeModal() {
+            ui.modal.overlay.classList.remove('visible');
+        }
+
+        ui.modal.closeBtn.addEventListener('click', closeModal);
+        ui.modal.overlay.addEventListener('click', (e) => {
+            if (e.target === ui.modal.overlay) closeModal();
+        });
+
+        // --- OTRA LÓGICA ---
+        ui.logoutButton.addEventListener('click', () => auth.signOut());
+        function toggleTheme(isDark) { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); }
+        ui.themeToggle.addEventListener('change', (e) => toggleTheme(e.target.checked));
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        ui.themeToggle.checked = savedTheme === 'dark';
     </script>
 </body>
 </html>
