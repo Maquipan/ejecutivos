@@ -48,6 +48,7 @@
             box-sizing: border-box; margin-bottom: 0;
             background: var(--bg-tertiary); color: var(--text-primary);
         }
+        [data-theme="dark"] input[type="date"] { color-scheme: dark; }
         label { font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; display: block; color: var(--text-secondary); }
         .form-grid > div { margin-bottom: 0.8rem; }
         #submit-button { margin-top: 0.8rem !important; }
@@ -171,6 +172,7 @@
                             </select>
                         </div>
                         <div class="full-width"><label for="direccion">Dirección</label><input type="text" id="direccion" required></div>
+                        <div class="full-width"><label for="fechaProgramacion">Fecha Programación Sugerida</label><input type="date" id="fechaProgramacion" required></div>
                         <div><label for="nomContacto">Nombre Contacto</label><input type="text" id="nomContacto" required></div>
                         <div><label for="numContacto">Teléfono Contacto</label><input type="tel" id="numContacto" required></div>
                         <div class="full-width"><label for="infoServicio">Información del Servicio</label><textarea id="infoServicio" rows="3" required></textarea></div>
@@ -182,7 +184,7 @@
                 <h2>📂 Mis Solicitudes Enviadas</h2>
                 <div class="table-container">
                     <table>
-                        <thead><tr><th>Nº Req.</th><th>Nº NV</th><th>Cliente</th><th>Rep.</th><th>Rep. Desp.</th><th>Últ. Modificación</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <thead><tr><th>Nº Req.</th><th>Cliente</th><th>F. Prog.</th><th>F. Asignada</th><th>Últ. Modificación</th><th>Estado</th><th>Acciones</th></tr></thead>
                         <tbody id="tabla-mis-solicitudes"></tbody>
                     </table>
                 </div>
@@ -205,9 +207,11 @@
                     <div class="detail-item"><strong>Teléfono:</strong> <span id="modal-telefono"></span></div>
                     <div class="detail-item"><strong>Tiene Repuestos:</strong> <span id="modal-tieneRepuestos"></span></div>
                     <div class="detail-item"><strong>Repuestos Despachados:</strong> <span id="modal-repDespachados"></span></div>
+                    <div class="detail-item"><strong>Fecha Sugerida (Ejecutivo):</strong> <span id="modal-fecha-programacion"></span></div>
+                    <div class="detail-item"><strong>Fecha Asignada (Planificador):</strong> <span id="modal-fecha-asignada"></span></div>
                     <div class="detail-item"><strong>Estado Actual:</strong> <span id="modal-estado"></span></div>
                     <div class="detail-item"><strong>Fecha Creación:</strong> <span id="modal-fecha-solicitud"></span></div>
-                    <div class="detail-item"><strong>Última Edición:</strong> <span id="modal-fecha-edicion"></span></div>
+                    <div class="detail-item full-width"><strong>Última Edición:</strong> <span id="modal-fecha-edicion"></span></div>
                     <div class="detail-item full-width"><strong>Info. Servicio:</strong> <span id="modal-info-servicio"></span></div>
                     <div class="detail-item full-width">
                         <strong>📝 Observaciones de Planificación:</strong>
@@ -238,15 +242,12 @@
         const actualizarServicio = async (id, data) => await db.collection('servicios').doc(id).update(data);
         const eliminarServicio = async (id) => await db.collection('servicios').doc(id).delete();
         
-        function formatTimestamp(timestamp) {
-            if (!timestamp || typeof timestamp.toDate !== 'function') return 'N/A';
-            const date = timestamp.toDate();
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            const hours = String(date.getHours()).padStart(2, '0');
-            const minutes = String(date.getMinutes()).padStart(2, '0');
-            return `${day}/${month}/${year} ${hours}:${minutes}`;
+        function formatTimestamp(ts) { if(!ts?.toDate) return 'N/A'; const d=ts.toDate(); return `${d.toLocaleDateString('es-CL')} ${d.toLocaleTimeString('es-CL').slice(0,5)}`; }
+        function formatDateString(dateStr) {
+            if (!dateStr || dateStr === 'N/A') return 'N/A';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            return `${parts[2]}/${parts[1]}/${parts[0]}`;
         }
 
         const ui = {
@@ -283,10 +284,11 @@
                 fechaEdicion: document.getElementById('modal-fecha-edicion'),
                 infoServicio: document.getElementById('modal-info-servicio'),
                 obsPlanificacion: document.getElementById('modal-obs-planificacion'),
+                fechaProgramacion: document.getElementById('modal-fecha-programacion'),
+                fechaAsignada: document.getElementById('modal-fecha-asignada'),
             }
         };
 
-        // --- LÓGICA DE AUTENTICACIÓN ---
         auth.onAuthStateChanged(async (user) => {
             if (user) {
                 currentUser = user;
@@ -316,8 +318,6 @@
                 .catch((error) => { ui.errorMessage.textContent = 'Error: ' + error.message; ui.errorMessage.style.display = 'block'; });
         });
 
-
-        // --- LÓGICA DEL PORTAL ---
         async function renderizarMisSolicitudes() {
             if (!currentUser) return;
             const todosLosServicios = await obtenerServicios();
@@ -327,7 +327,7 @@
 
             ui.misSolicitudesTbody.innerHTML = '';
             if (misServiciosCache.length === 0) {
-                ui.misSolicitudesTbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Aún no has enviado solicitudes.</td></tr>`;
+                ui.misSolicitudesTbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">Aún no has enviado solicitudes.</td></tr>`;
                 return;
             }
             misServiciosCache.forEach(s => {
@@ -335,8 +335,9 @@
                 const estadoClass = s.estado.replace(/\s+/g, '.');
                 let fechaMostrada = s.fechaEdicion ? `(Ed.) ${formatTimestamp(s.fechaEdicion)}` : s.fechaSolicitud || 'N/A';
                 tr.innerHTML = `
-                    <td>${s.numRequerimiento || 'N/A'}</td><td>${s.numNV || 'N/A'}</td><td>${s.cliente || 'N/A'}</td>
-                    <td>${s.tieneRepuestos || 'No'}</td><td>${s.tieneRepuestos === 'Sí' ? (s.repuestosDespachados || 'Pendiente') : 'N/A'}</td>
+                    <td>${s.numRequerimiento || 'N/A'}</td><td>${s.cliente || 'N/A'}</td>
+                    <td>${formatDateString(s.fechaProgramacion)}</td>
+                    <td>${formatDateString(s.fechaAsignada)}</td>
                     <td>${fechaMostrada}</td><td><span class="status status-${estadoClass}">${s.estado}</span></td>
                     <td><div class="action-cell">
                             <button class="btn-detail" data-id="${s.id}">Detalle</button>
@@ -367,6 +368,7 @@
                     ui.formEjecutivo.tieneRepuestos.value = servicioAEditar.tieneRepuestos || 'No';
                     ui.formEjecutivo.repuestosDespachados.value = servicioAEditar.repuestosDespachados || 'No';
                     ui.formEjecutivo.direccion.value = servicioAEditar.direccion || '';
+                    ui.formEjecutivo.fechaProgramacion.value = servicioAEditar.fechaProgramacion || '';
                     ui.formEjecutivo.nomContacto.value = servicioAEditar.nomContacto || '';
                     ui.formEjecutivo.numContacto.value = servicioAEditar.numContacto || '';
                     ui.formEjecutivo.infoServicio.value = servicioAEditar.infoServicio || '';
@@ -389,7 +391,9 @@
                 numRequerimiento: ui.formEjecutivo.numRequerimiento.value, numNV: ui.formEjecutivo.numNV.value,
                 cliente: ui.formEjecutivo.cliente.value, tieneRepuestos: ui.formEjecutivo.tieneRepuestos.value,
                 repuestosDespachados: ui.formEjecutivo.tieneRepuestos.value === 'Sí' ? ui.formEjecutivo.repuestosDespachados.value : 'N/A',
-                direccion: ui.formEjecutivo.direccion.value, nomContacto: ui.formEjecutivo.nomContacto.value,
+                direccion: ui.formEjecutivo.direccion.value,
+                fechaProgramacion: ui.formEjecutivo.fechaProgramacion.value,
+                nomContacto: ui.formEjecutivo.nomContacto.value,
                 numContacto: ui.formEjecutivo.numContacto.value, infoServicio: ui.formEjecutivo.infoServicio.value,
             };
 
@@ -424,7 +428,6 @@
             }
         });
 
-        // --- LÓGICA DEL MODAL ---
         function openModal(service) {
             ui.modal.reqNum.textContent = `Detalles: Req #${service.numRequerimiento || 'N/A'}`;
             ui.modal.cliente.textContent = service.cliente || 'N/A';
@@ -439,6 +442,8 @@
             ui.modal.fechaEdicion.textContent = service.fechaEdicion ? formatTimestamp(service.fechaEdicion) : 'Sin ediciones';
             ui.modal.infoServicio.textContent = service.infoServicio || 'N/A';
             ui.modal.obsPlanificacion.textContent = service.observacionesPlanificacion || 'Sin observaciones.';
+            ui.modal.fechaProgramacion.textContent = formatDateString(service.fechaProgramacion);
+            ui.modal.fechaAsignada.textContent = formatDateString(service.fechaAsignada);
             ui.modal.overlay.classList.add('visible');
         }
 
@@ -451,7 +456,6 @@
             if (e.target === ui.modal.overlay) closeModal();
         });
 
-        // --- OTRA LÓGICA ---
         ui.logoutButton.addEventListener('click', () => auth.signOut());
         function toggleTheme(isDark) { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); }
         ui.themeToggle.addEventListener('change', (e) => toggleTheme(e.target.checked));
