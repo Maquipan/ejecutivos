@@ -63,10 +63,29 @@
             padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; display: flex;
             align-items: center; gap: 0.5rem; font-weight: 600; width: auto;
         }
-        
+
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.5rem; }
         .form-grid .full-width { grid-column: 1 / -1; }
-        
+
+        /* INICIO: Estilos para el campo de monto en CLP */
+        .currency-input {
+            position: relative;
+        }
+        .currency-input::before {
+            content: "$";
+            position: absolute;
+            left: 10px; /* Posiciona el $ dentro del input */
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary); /* Color del símbolo */
+            pointer-events: none; /* Asegura que el $ no interfiera con el input */
+            font-size: 0.9rem; /* Consistente con el tamaño de fuente del input */
+        }
+        .currency-input input {
+            padding-left: 25px; /* Ajusta el padding para dar espacio al símbolo $ */
+        }
+        /* FIN: Estilos para el campo de monto en CLP */
+
         .card { background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
         .card h2 { margin-top: 0; margin-bottom: 1.5rem; font-size: 1.2rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
 
@@ -100,13 +119,13 @@
         .status-Pendiente { color: var(--pending); }
         .status-Confirmado, .status-En\.Progreso { color: var(--confirmed); }
         .status-Completado { color: var(--success); }
-        
+
         .action-cell { display: flex; gap: 0.5rem; }
         .action-cell button { padding: 0.4rem 0.8rem; font-size: 0.85rem; width: auto; }
         .btn-detail { background-color: var(--accent); color: var(--bg-secondary); }
         .btn-edit { background-color: var(--bg-tertiary); color: var(--text-primary); }
         .btn-delete { background-color: var(--danger); color: white; }
-        
+
         .theme-switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .theme-switch input { opacity: 0; width: 0; height: 0; }
         .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-tertiary); transition: var(--transition-speed); border-radius: 26px; }
@@ -114,13 +133,41 @@
         input:checked + .slider { background-color: var(--accent); }
         input:checked + .slider:before { transform: translateX(24px); }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity var(--transition-speed); }
+        /* MODAL STYLES ADJUSTED FOR BETTER FIT */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; visibility: hidden; transition: opacity var(--transition-speed);
+        }
         .modal-overlay.visible { opacity: 1; visibility: visible; }
-        .modal-container { background: var(--modal-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 16px; width: 90%; max-width: 700px; padding: 2rem; transform: scale(0.9); transition: transform var(--transition-speed); }
+        .modal-container {
+            background: var(--modal-bg);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            width: 95%; /* Increased width for better use of space */
+            max-width: 700px;
+            max-height: 95vh; /* Limit height to viewport to ensure it fits */
+            padding: 2rem;
+            display: flex; /* Use flexbox for internal layout */
+            flex-direction: column; /* Stack header, content, footer vertically */
+            transform: scale(0.9);
+            transition: transform var(--transition-speed);
+        }
         .modal-overlay.visible .modal-container { transform: scale(1); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem; }
+        .modal-header {
+            flex-shrink: 0; /* Prevent header from shrinking */
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem;
+        }
         .modal-header h2 { margin: 0; color: var(--accent); }
         .modal-close-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; padding: 0; }
+        .modal-content {
+            flex-grow: 1; /* Allow content to grow and take available space */
+            overflow-y: auto; /* Enable vertical scrolling for content if it overflows */
+            padding-right: 10px; /* Add some padding for scrollbar if present */
+        }
         .modal-content .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; }
         .modal-content .detail-item strong { display: block; color: var(--text-secondary); margin-bottom: 0.25rem; font-size: 0.875rem; text-transform: uppercase; }
         .modal-content .detail-item span { color: var(--text-primary); font-size: 1rem; }
@@ -130,6 +177,7 @@
             padding: 0.5rem; border-radius: 6px; margin-top: 0.5rem; max-height: 150px;
             overflow-y: auto; font-style: italic;
         }
+        /* End MODAL STYLES ADJUSTED FOR BETTER FIT */
     </style>
 </head>
 <body>
@@ -172,6 +220,19 @@
                         <div><label for="numRequerimiento">Nº Requerimiento</label><input type="text" id="numRequerimiento" required></div>
                         <div><label for="numNV">Nº de NV</label><input type="text" id="numNV" required></div>
                         <div class="full-width"><label for="cliente">Nombre del Cliente</label><input type="text" id="cliente" required></div>
+
+                        <div>
+                            <label for="montoServicio">Monto del Servicio con IVA:</label>
+                            <div class="currency-input">
+                                <input type="text" id="montoServicio" name="montoServicio" placeholder="Ej: 15.000" onkeyup="formatCurrency(this)" required>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="tipoServicio">Tipo de Servicio:</label>
+                            <select id="tipoServicio" name="tipoServicio" required>
+                                <option value="">Seleccione un tipo</option>
+                                </select>
+                        </div>
                         <div>
                             <label for="tieneRepuestos">¿Tiene Repuestos?</label>
                             <select id="tieneRepuestos" required>
@@ -199,12 +260,12 @@
             </div>
             <div class="card">
                 <h2>📂 Mis Solicitudes (en tiempo real)</h2>
-                
+
                 <div class="filter-controls">
-                    <input type="search" id="search-input" placeholder="Buscar por Nº REQ o Nº NV...">
+                    <input type="search" id="search-input" placeholder="Buscar por Nº REQ, Nº NV o Cliente...">
                     <select id="status-filter">
                         <option value="Todos">Todos los Estados</option>
-                        <option value="Pendiente">Pendiente</option>
+                        <option value="Pendiente">Pendencia</option>
                         <option value="Confirmado">Confirmado</option>
                         <option value="En.Progreso">En Progreso</option>
                         <option value="Completado">Completado</option>
@@ -212,7 +273,17 @@
                 </div>
                 <div class="table-container">
                     <table>
-                        <thead><tr><th>Nº Req.</th><th>Cliente</th><th>F. Sugerida</th><th>F. Asignada</th><th>Últ. Modificación</th><th>Estado</th><th>Acciones</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>Nº Req.</th>
+                                <th>Cliente</th>
+                                <th>Monto</th> <th>Tipo Servicio</th> <th>F. Sugerida</th>
+                                <th>F. Asignada</th>
+                                <th>Últ. Modificación</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
                         <tbody id="tabla-mis-solicitudes"></tbody>
                     </table>
                 </div>
@@ -233,6 +304,8 @@
                     <div class="detail-item full-width"><strong>Dirección:</strong> <span id="modal-direccion"></span></div>
                     <div class="detail-item"><strong>Contacto:</strong> <span id="modal-contacto"></span></div>
                     <div class="detail-item"><strong>Teléfono:</strong> <span id="modal-telefono"></span></div>
+                    <div class="detail-item"><strong>Monto Servicio:</strong> <span id="modal-montoServicio"></span></div>
+                    <div class="detail-item"><strong>Tipo Servicio:</strong> <span id="modal-tipoServicio"></span></div>
                     <div class="detail-item"><strong>Tiene Repuestos:</strong> <span id="modal-tieneRepuestos"></span></div>
                     <div class="detail-item"><strong>Repuestos Despachados:</strong> <span id="modal-repDespachados"></span></div>
                     <div class="detail-item"><strong>Fecha Sugerida (Ejecutivo):</strong> <span id="modal-fecha-programacion"></span></div>
@@ -261,19 +334,42 @@
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
-        
+
         // --- VARIABLES GLOBALES ---
         let currentUser = null;
         let misServiciosCache = [];
         let unsubscribeListener = null; // Para detener el listener de datos al cerrar sesión
 
-        // --- FUNCIONES DE AYUDA (FORMATO DE FECHAS) ---
+        // --- FUNCIONES DE AYUDA (FORMATO DE FECHAS Y MONEDA) ---
         function formatTimestamp(ts) { if(!ts?.toDate) return 'N/A'; const d=ts.toDate(); return `${d.toLocaleDateString('es-CL')} ${d.toLocaleTimeString('es-CL').slice(0,5)}`; }
         function formatDateString(dateStr) {
             if (!dateStr || dateStr === 'N/A') return 'N/A';
             const parts = dateStr.split('-');
             if (parts.length !== 3) return dateStr;
             return `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+
+        // Nueva función para formatear monto en pesos chilenos
+        function formatCurrency(input) {
+            let value = input.value.replace(/[^0-9]/g, ''); // Elimina cualquier caracter no numérico
+            if (value === '') {
+                input.value = '';
+                return;
+            }
+            // Convierte a número para el formateo
+            let numericValue = parseInt(value, 10);
+            // Formatea el número con puntos como separador de miles y prefijo '$'
+            value = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(numericValue);
+            input.value = value.replace('CLP', '').trim(); // Elimina 'CLP' y ajusta espacios
+        }
+
+        function displayCurrency(value) {
+            if (value === undefined || value === null || value === '') return 'N/A';
+            // Elimina '$' y puntos para convertir a número antes de formatear
+            const cleanValue = String(value).replace(/\$|\./g, '');
+            const numericValue = parseInt(cleanValue, 10);
+            if (isNaN(numericValue)) return 'N/A';
+            return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(numericValue);
         }
 
         // --- REFERENCIAS AL DOM (UI) ---
@@ -298,6 +394,8 @@
             numRequerimiento: document.getElementById('numRequerimiento'),
             numNV: document.getElementById('numNV'),
             cliente: document.getElementById('cliente'),
+            montoServicio: document.getElementById('montoServicio'), // Nuevo
+            tipoServicio: document.getElementById('tipoServicio'),   // Nuevo
             tieneRepuestos: document.getElementById('tieneRepuestos'),
             repuestosDespachados: document.getElementById('repuestosDespachados'),
             direccion: document.getElementById('direccion'),
@@ -307,8 +405,8 @@
             infoServicio: document.getElementById('infoServicio'),
             // Tabla y filtros
             misSolicitudesTbody: document.getElementById('tabla-mis-solicitudes'),
-            searchInput: document.getElementById('search-input'), // NUEVO
-            statusFilter: document.getElementById('status-filter'), // NUEVO
+            searchInput: document.getElementById('search-input'),
+            statusFilter: document.getElementById('status-filter'),
             // Modal
             modal: {
                 overlay: document.getElementById('service-modal'),
@@ -319,6 +417,8 @@
                 direccion: document.getElementById('modal-direccion'),
                 contacto: document.getElementById('modal-contacto'),
                 telefono: document.getElementById('modal-telefono'),
+                montoServicio: document.getElementById('modal-montoServicio'), // Nuevo en modal
+                tipoServicio: document.getElementById('modal-tipoServicio'),   // Nuevo en modal
                 tieneRepuestos: document.getElementById('modal-tieneRepuestos'),
                 repDespachados: document.getElementById('modal-repDespachados'),
                 estado: document.getElementById('modal-estado'),
@@ -338,9 +438,10 @@
                 // MEJORA: Saludo personalizado
                 const userName = user.email.split('@')[0];
                 ui.welcomeMessage.textContent = `Bienvenido, ${userName.charAt(0).toUpperCase() + userName.slice(1)}`;
-                
+
                 ui.loginView.style.display = 'none';
                 ui.ejecutivoView.style.display = 'block';
+                populateTipoServicioDropdowns(); // Populate dropdowns on login
                 listenToMisSolicitudes(); // Inicia la escucha en tiempo real
             } else {
                 currentUser = null;
@@ -350,9 +451,38 @@
                 ui.welcomeMessage.textContent = 'Portal del Ejecutivo'; // Resetea el saludo
             }
         });
-        
+
+        // Function to populate "Tipo de Servicio" dropdowns
+        function populateTipoServicioDropdowns() {
+            const tiposDeServicio = [
+                "Canal Tradicional",
+                "Descanso Turno",
+                "Montaje",
+                "Otro",
+                "Post Venta",
+                "Proyección Asistencia",
+                "Proyección Mantención",
+                "Proyección Repuestos",
+                "Retail Asistencia",
+                "Retail Mantencion",
+                "Retail Repuestos",
+                "Turno",
+                "Vacaciones"
+            ].sort(); // Sort alphabetically
+
+            // Populate form's tipoServicio select
+            const formTipoServicioSelect = ui.tipoServicio;
+            const currentFormSelection = formTipoServicioSelect.value;
+            formTipoServicioSelect.innerHTML = '<option value="">Seleccione un tipo</option>';
+            tiposDeServicio.forEach(tipo => {
+                const option = new Option(tipo, tipo);
+                formTipoServicioSelect.add(option);
+            });
+            formTipoServicioSelect.value = tiposDeServicio.includes(currentFormSelection) ? currentFormSelection : '';
+        }
+
         // --- MANEJO DE VISTAS Y DATOS (TIEMPO REAL) ---
-        
+
         function listenToMisSolicitudes() {
             if (!currentUser) return;
             // Detiene cualquier escucha anterior para evitar duplicados
@@ -369,7 +499,7 @@
                     alert("Error al cargar las solicitudes.");
                 });
         }
-        
+
         // MEJORA: Función de renderizado que aplica los filtros
         function renderTable() {
             const searchTerm = ui.searchInput.value.toLowerCase().trim();
@@ -378,35 +508,36 @@
             const filteredServices = misServiciosCache.filter(s => {
                 const searchMatch = !searchTerm ||
                     (s.numRequerimiento && s.numRequerimiento.toLowerCase().includes(searchTerm)) ||
-                    (s.numNV && s.numNV.toLowerCase().includes(searchTerm));
+                    (s.numNV && s.numNV.toLowerCase().includes(searchTerm)) ||
+                    (s.cliente && s.cliente.toLowerCase().includes(searchTerm)); // Added client search
 
-                const estadoClass = s.estado.replace(/\s+/g, '.');
+                const estadoClass = s.estado ? s.estado.replace(/\s+/g, '.') : ''; // Manejo de estado indefinido
                 const statusMatch = statusFilter === 'Todos' || estadoClass === statusFilter;
-                
+
                 return searchMatch && statusMatch;
             });
-            
+
             ui.misSolicitudesTbody.innerHTML = '';
             if (filteredServices.length === 0) {
-                const message = misServiciosCache.length > 0 
+                const message = misServiciosCache.length > 0
                     ? "No se encontraron solicitudes con los filtros aplicados."
                     : "Aún no has enviado solicitudes.";
-                ui.misSolicitudesTbody.innerHTML = `<tr><td colspan="7" style="text-align:center;">${message}</td></tr>`;
+                ui.misSolicitudesTbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">${message}</td></tr>`; // Modificado colspan
                 return;
             }
 
             filteredServices.forEach(s => {
                 const tr = document.createElement('tr');
-                const estadoClass = s.estado.replace(/\s+/g, '.');
+                const estadoClass = s.estado ? s.estado.replace(/\s+/g, '.') : '';
                 const fechaMod = s.fechaEdicion ? `(Ed.) ${formatTimestamp(s.fechaEdicion)}` : formatTimestamp(s.timestamp);
 
                 tr.innerHTML = `
                     <td>${s.numRequerimiento || 'N/A'}</td>
                     <td>${s.cliente || 'N/A'}</td>
-                    <td>${formatDateString(s.fechaProgramacion)}</td>
+                    <td>${displayCurrency(s.montoServicio)}</td> <td>${s.tipoServicio || 'N/A'}</td> <td>${formatDateString(s.fechaProgramacion)}</td>
                     <td>${formatDateString(s.fechaAsignada)}</td>
                     <td>${fechaMod}</td>
-                    <td><span class="status status-${estadoClass}">${s.estado}</span></td>
+                    <td><span class="status status-${estadoClass}">${s.estado || 'N/A'}</span></td>
                     <td><div class="action-cell">
                         <button class="btn-detail" data-id="${s.id}">Detalle</button>
                         <button class="btn-edit" data-id="${s.id}">Editar</button>
@@ -439,7 +570,7 @@
         // NUEVO: Listeners para los filtros que llaman a la función de renderizado
         ui.searchInput.addEventListener('input', renderTable);
         ui.statusFilter.addEventListener('change', renderTable);
-        
+
         // Listener para acciones en la tabla (Detalle, Editar, Eliminar)
         ui.misSolicitudesTbody.addEventListener('click', async (e) => {
             const button = e.target.closest('button');
@@ -466,12 +597,22 @@
         ui.formEjecutivo.addEventListener('submit', async function(e) {
             e.preventDefault();
             const serviceId = ui.editServiceId.value;
+
+            // Limpia el formato de moneda antes de guardar en Firestore
+            const montoSinFormato = ui.montoServicio.value.replace(/\$|\./g, '');
+
             const datosServicio = {
-                numRequerimiento: ui.numRequerimiento.value, numNV: ui.numNV.value,
-                cliente: ui.cliente.value, tieneRepuestos: ui.tieneRepuestos.value,
+                numRequerimiento: ui.numRequerimiento.value,
+                numNV: ui.numNV.value,
+                cliente: ui.cliente.value,
+                montoServicio: montoSinFormato, // Guarda el monto sin formato
+                tipoServicio: ui.tipoServicio.value, // Guarda el tipo de servicio
+                tieneRepuestos: ui.tieneRepuestos.value,
                 repuestosDespachados: ui.tieneRepuestos.value === 'Sí' ? ui.repuestosDespachados.value : 'N/A',
-                direccion: ui.direccion.value, fechaProgramacion: ui.fechaProgramacion.value,
-                nomContacto: ui.nomContacto.value, numContacto: ui.numContacto.value, 
+                direccion: ui.direccion.value,
+                fechaProgramacion: ui.fechaProgramacion.value,
+                nomContacto: ui.nomContacto.value,
+                numContacto: ui.numContacto.value,
                 infoServicio: ui.infoServicio.value,
             };
 
@@ -499,6 +640,8 @@
             ui.numRequerimiento.value = service.numRequerimiento || '';
             ui.numNV.value = service.numNV || '';
             ui.cliente.value = service.cliente || '';
+            ui.montoServicio.value = displayCurrency(service.montoServicio).replace('$','').trim(); // Formatear para editar
+            ui.tipoServicio.value = service.tipoServicio || '';
             ui.tieneRepuestos.value = service.tieneRepuestos || 'No';
             ui.repuestosDespachados.value = service.repuestosDespachados || 'No';
             ui.direccion.value = service.direccion || '';
@@ -506,16 +649,16 @@
             ui.nomContacto.value = service.nomContacto || '';
             ui.numContacto.value = service.numContacto || '';
             ui.infoServicio.value = service.infoServicio || '';
-            
+
             ui.editServiceId.value = service.id;
             ui.formTitle.textContent = `✏️ Editando Req #${service.numRequerimiento}`;
             ui.submitButton.textContent = 'Guardar Cambios';
             ui.cancelButton.style.display = 'inline-block';
-            
+
             handleRepuestosChange(); // Actualiza el estado del select de repuestos
             ui.formEjecutivo.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-        
+
         function resetForm() {
             ui.formEjecutivo.reset();
             ui.editServiceId.value = '';
@@ -523,6 +666,12 @@
             ui.submitButton.textContent = 'Generar Solicitud';
             ui.cancelButton.style.display = 'none';
             handleRepuestosChange();
+            // Asegura que los selects vuelvan a su valor por defecto si es necesario
+            ui.tipoServicio.value = '';
+            ui.tieneRepuestos.value = 'No';
+            ui.repuestosDespachados.value = 'No';
+            // También resetea el formato del monto al limpiar
+            ui.montoServicio.value = '';
         }
 
         function handleRepuestosChange() {
@@ -545,6 +694,8 @@
             ui.modal.direccion.textContent = service.direccion || 'N/A';
             ui.modal.contacto.textContent = service.nomContacto || 'N/A';
             ui.modal.telefono.textContent = service.numContacto || 'N/A';
+            ui.modal.montoServicio.textContent = displayCurrency(service.montoServicio); // Formatea para mostrar
+            ui.modal.tipoServicio.textContent = service.tipoServicio || 'N/A';
             ui.modal.tieneRepuestos.textContent = service.tieneRepuestos || 'N/A';
             ui.modal.repDespachados.textContent = service.tieneRepuestos === 'Sí' ? (service.repuestosDespachados || 'Pendiente') : 'N/A';
             ui.modal.estado.textContent = service.estado || 'N/A';
