@@ -3,106 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal del Ejecutivo | Con Notificaciones</title>
+    <title>Portal del Planificador Unificado</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <style>
         :root {
             --font-main: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             --transition-speed: 0.3s;
         }
+
+        /* --- ESTILOS DE NOTIFICACIÓN --- */
+        @keyframes parpadeo-notificacion-dark {
+            0%, 100% { background-color: var(--bg-secondary); }
+            50% { background-color: rgba(125, 207, 255, 0.15); }
+        }
+
+        @keyframes parpadeo-notificacion-light {
+            0%, 100% { background-color: var(--bg-secondary); }
+            50% { background-color: rgba(0, 123, 255, 0.1); }
+        }
+
+        a.req-link {
+            color: var(--text-primary);
+            text-decoration: none;
+            transition: color var(--transition-speed);
+        }
+
+        a.req-link:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        [data-theme="dark"] tr.fila-notificacion {
+            animation: parpadeo-notificacion-dark 2.5s infinite;
+        }
+
+        [data-theme="light"] tr.fila-notificacion {
+            animation: parpadeo-notificacion-light 2.5s infinite;
+        }
+
+        [data-theme="dark"] tr.fila-notificacion:hover,
+        [data-theme="light"] tr.fila-notificacion:hover {
+            animation: none;
+            background-color: var(--bg-tertiary);
+        }
+
         [data-theme="dark"] {
             --bg-primary: #1a1b26; --bg-secondary: #24283b; --bg-tertiary: #414868;
             --text-primary: #c0caf5; --text-secondary: #a9b1d6; --accent: #7dcfff;
             --accent-glow: rgba(125, 207, 255, 0.2); --border-color: #3b3f51;
-            --success: #9ece6a; --pending: #e0af68; --danger: #f7768e; --confirmed: #7aa2f7;
+            --success: #9ece6a; --pending: #e0af68; --danger: #f7768e; --in-progress: #7aa2f7;
             --modal-bg: rgba(36, 40, 59, 0.85);
-            --chat-bubble-ejecutiva: #7A4C5D; /* Rosado oscuro desaturado */
-            --chat-bubble-planificador: #4E6758; /* Verde oscuro desaturado */
+            --chat-bubble-ejecutiva: #7A4C5D;
+            --chat-bubble-planificador: #4E6758;
             --notif-unread-bg: rgba(125, 207, 255, 0.1);
         }
         [data-theme="light"] {
             --bg-primary: #f0f2f5; --bg-secondary: #ffffff; --bg-tertiary: #e9ecef;
             --text-primary: #212529; --text-secondary: #495057; --accent: #007bff;
             --accent-glow: rgba(0, 123, 255, 0.15); --border-color: #dee2e6;
-            --success: #28a745; --pending: #ffc107; --danger: #dc3545; --confirmed: #007bff;
+            --success: #28a745; --pending: #ffc107; --danger: #dc3545; --in-progress: #17a2b8;
             --modal-bg: rgba(255, 255, 255, 0.85);
-            --chat-bubble-ejecutiva: #F8CECC; /* Rosado pastel claro */
-            --chat-bubble-planificador: #D5E8D4; /* Verde pastel claro */
+            --chat-bubble-ejecutiva: #F8CECC;
+            --chat-bubble-planificador: #D5E8D4;
             --notif-unread-bg: rgba(0, 123, 255, 0.08);
         }
         *, *::before, *::after { box-sizing: border-box; }
-        body { font-family: var(--font-main); margin: 0; background-color: var(--bg-primary); color: var(--text-primary); transition: background-color var(--transition-speed), color var(--transition-speed); }
-        .container { max-width: 1200px; margin: 0 auto; padding: 1rem 1.5rem; }
-        .header-controls { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background-color: var(--bg-secondary); border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--border-color); }
+        body {
+            font-family: var(--font-main); margin: 0;
+            background-color: var(--bg-primary); color: var(--text-primary);
+            transition: background-color var(--transition-speed), color var(--transition-speed);
+        }
+        .container { margin: 0 auto; padding: 1rem 1.5rem; }
+        .header-controls {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem 1.5rem; background-color: var(--bg-secondary);
+            border-radius: 12px; margin-bottom: 1.5rem; border: 1px solid var(--border-color);
+        }
         .header-controls h1 { margin: 0; font-size: 1.5rem; color: var(--text-primary); font-weight: 600; }
         .action-buttons { display: flex; align-items: center; gap: 1rem; }
-        input, textarea, select, button { width: 100%; padding: 0.6rem 0.75rem; font-size: 0.9rem; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; margin-bottom: 0; background: var(--bg-tertiary); color: var(--text-primary); }
-        [data-theme="dark"] input[type="date"] { color-scheme: dark; }
-        label { font-weight: 600; font-size: 0.85rem; margin-bottom: 0.3rem; display: block; color: var(--text-secondary); }
-        .form-grid > div { margin-bottom: 0.8rem; }
-        #submit-button, #cancel-edit-button { margin-top: 0.8rem !important; }
-
-        input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
-        select:disabled { background-color: var(--bg-primary); opacity: 0.5; cursor: not-allowed; }
-        button { font-weight: 600; border: none; cursor: pointer; transition: all 0.2s; }
-        button#submit-button { background-color: var(--accent); color: var(--bg-secondary); }
-        button:hover { filter: brightness(1.1); }
         .icon-btn {
-            background: var(--danger); border-color: var(--danger); color: white;
+            background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-secondary);
             padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; display: flex;
             align-items: center; gap: 0.5rem; font-weight: 600; width: auto;
+            transition: all var(--transition-speed);
         }
+        .icon-btn:hover { color: var(--accent); border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+        .icon-btn.logout { background: var(--danger); border-color: var(--danger); color: white; }
+        .icon-btn svg { width: 16px; height: 16px; }
 
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.5rem; }
-        .form-grid .full-width { grid-column: 1 / -1; }
-
-        .currency-input { position: relative; }
-        .currency-input::before {
-            content: "$"; position: absolute; left: 10px; top: 50%;
-            transform: translateY(-50%); color: var(--text-secondary);
-            pointer-events: none; font-size: 0.9rem;
-        }
-        .currency-input input { padding-left: 25px; }
-
-        .card { background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
-        .card h2 { margin-top: 0; margin-bottom: 1.5rem; font-size: 1.2rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
-
-        #login-view { display: flex; align-items: center; justify-content: center; height: 100vh; padding: 1.5rem; }
-        .login-card { max-width: 450px; width: 100%; }
-        #error-message { color: var(--danger); text-align: center; margin-top: 1rem; display: none; min-height: 1.2em; }
-        .secondary-action { background-color: var(--bg-tertiary); color: var(--text-primary); margin-top: 1rem; }
-        
-        .filter-controls { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem; }
-        .filter-controls input[type="search"] { flex: 2; min-width: 200px; }
-        .filter-controls select { flex: 1; min-width: 180px; }
-        .filter-controls input, .filter-controls select { margin-bottom: 0; }
-        
-        .table-container { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
-        th { font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-        tbody tr:hover { background-color: var(--bg-tertiary); }
-        .status { padding: 0.25rem 0.6rem; border-radius: 12px; font-weight: 600; text-align: center; display: inline-block; font-size: 0.8rem; border: 1px solid currentColor; background: transparent;}
-        .status-Pendiente { color: var(--pending); }
-        .status-Confirmado, .status-En\.Progreso { color: var(--confirmed); }
-        .status-Completado { color: var(--success); }
-
-        .action-cell { display: flex; gap: 0.5rem; }
-        .action-cell button { padding: 0.4rem 0.8rem; font-size: 0.85rem; width: auto; }
-        .btn-detail { background-color: var(--accent); color: var(--bg-secondary); }
-        .btn-edit { background-color: var(--bg-tertiary); color: var(--text-primary); }
-        .btn-delete { background-color: var(--danger); color: white; }
-
-        .theme-switch { position: relative; display: inline-block; width: 50px; height: 26px; }
-        .theme-switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-tertiary); transition: var(--transition-speed); border-radius: 26px; }
-        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: var(--transition-speed); border-radius: 50%; }
-        input:checked + .slider { background-color: var(--accent); }
-        input:checked + .slider:before { transform: translateX(24px); }
-
+        /* --- ESTILOS CAMPANA DE NOTIFICACIÓN --- */
         .notification-bell { position: relative; }
         #notif-bell-btn {
             background: none; border: none; color: var(--text-secondary); cursor: pointer;
@@ -117,7 +108,7 @@
             width: 18px; height: 18px; display: flex;
             align-items: center; justify-content: center;
             transform: translate(25%, -25%);
-            display: none;
+            display: none; 
         }
         #notif-panel {
             position: absolute; top: calc(100% + 10px); right: 0;
@@ -135,9 +126,113 @@
         }
         .notif-item:last-child { border-bottom: none; }
         .notif-item:hover { background-color: var(--bg-tertiary); }
-        .notif-item p { margin: 0 0 0.25rem 0; font-size: 0.9rem; line-height: 1.4; }
+        .notif-item p { margin: 0 0 0.25rem 0; font-size: 0.9rem; line-height: 1.4; white-space: normal; }
         .notif-item small { font-size: 0.75rem; color: var(--text-secondary); }
         .notif-item.unread { background-color: var(--notif-unread-bg); }
+
+        .card { background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+        .card h2 { margin-top: 0; margin-bottom: 1.5rem; font-size: 1.2rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
+        select, input, textarea {
+            width: 100%; padding: 0.75rem; font-size: 0.95rem; border: 1px solid var(--border-color);
+            border-radius: 8px; box-sizing: border-box; margin-bottom: 0;
+            background: var(--bg-tertiary); color: var(--text-primary);
+        }
+        button {
+             width: 100%; padding: 0.75rem; font-size: 1rem; border: none;
+             border-radius: 8px; box-sizing: border-box;
+             background-color: var(--accent); color: var(--bg-secondary); font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        button:hover { filter: brightness(1.1); }
+        label { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; display: block; color: var(--text-secondary); }
+
+        #login-container { display: flex; align-items: center; justify-content: center; height: 100vh; padding: 1.5rem; }
+        .login-card { max-width: 450px; width: 100%; }
+        #error-message { color: var(--danger); text-align: center; margin-top: 1rem; display: none; }
+
+        .filtros-container { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem 1.5rem; align-items: flex-end; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+
+        th, td {
+            padding: 0.8rem 0.6rem; font-size: 0.85rem; text-align: left;
+            border-bottom: 1px solid var(--border-color); white-space: nowrap;
+        }
+        th { font-size: 0.875rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; cursor: pointer; user-select: none; position: relative; }
+        th .sort-indicator { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); opacity: 0.6; }
+        tbody tr:hover { background-color: var(--bg-tertiary); }
+        
+        [data-theme="dark"] tr.has-observation { background-color: rgba(224, 175, 104, 0.1); }
+        [data-theme="light"] tr.has-observation { background-color: rgba(255, 193, 7, 0.15); }
+        tr.has-observation:hover { background-color: var(--bg-tertiary); }
+        
+        .notification-dot {
+			display: inline-block; width: 12px; height: 12px;
+			background-color: var(--danger); border-radius: 50%;
+			margin-left: 8px; vertical-align: middle;
+			animation: pulse 1.5s infinite; flex-shrink: 0;
+		}
+
+		@keyframes pulse {
+			0% { box-shadow: 0 0 0 0 rgba(247, 118, 142, 0.7); }
+			70% { box-shadow: 0 0 0 10px rgba(247, 118, 142, 0); }
+			100% { box-shadow: 0 0 0 0 rgba(247, 118, 142, 0); }
+		}
+
+        td input, td select {
+            padding: 0.4rem; font-size: 0.85rem; min-width: 90px;
+            background-color: var(--bg-secondary); border: 1px solid var(--border-color);
+            box-sizing: border-box; color: var(--text-primary);
+        }
+        tbody tr:hover td input, tbody tr:hover td select { background-color: var(--bg-tertiary); }
+        td input:focus, td select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-glow); }
+        [data-theme="dark"] input[type="date"], [data-theme="dark"] input[type="time"] { color-scheme: dark; background-color: var(--bg-secondary); color: var(--text-primary); }
+
+        td.cliente-cell { white-space: normal; min-width: 150px; max-width: 250px; word-break: break-word; }
+        .tecnico-display { display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+        .tecnico-names { font-size: 0.9rem; padding: 0.5rem; background-color: var(--bg-primary); border-radius: 6px; min-height: 38px; width: 100%; white-space: normal; }
+        .btn-select-tecnicos { width: 100%; font-size: 0.85rem; padding: 0.4rem 0.8rem; }
+
+        .action-cell { display: flex; gap: 0.5rem; align-items: center; }
+        .action-cell button { width: auto; font-size: 0.85rem; padding: 0.4rem 0.8rem; }
+        .btn-detail { background-color: var(--accent); color: var(--bg-secondary); }
+        .btn-delete { background-color: var(--danger); color: white; }
+
+        .status-badge { padding: 0.3em 0.7em; border-radius: 10px; font-weight: 600; font-size: 0.8rem; text-align: center; display: inline-block; }
+        .status-badge.badge-si { background-color: var(--in-progress); color: white; }
+        .status-badge.badge-no { background-color: var(--bg-tertiary); color: var(--text-secondary); }
+        .status-badge.badge-pendiente { background-color: var(--pending); color: #1a1b26; }
+        .status-badge.badge-na { background-color: transparent; color: var(--text-secondary); }
+
+        td select[name="estado"] {
+            font-weight: 600; border: 2px solid; -webkit-appearance: none; appearance: none;
+            background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23a9b1d6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+            background-repeat: no-repeat; background-position: right 0.5rem center; background-size: 1em; padding-right: 2.2rem;
+        }
+        [data-theme="light"] td select[name="estado"] {
+            background-image: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%23495057" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+        }
+        td select.status-Pendiente, td select.status-Esperando-Repuestos { border-color: var(--pending); color: var(--pending); }
+        td select.status-Confirmado { border-color: var(--accent); color: var(--accent); }
+        /* NUEVO: Estado EJECUTADO */
+        td select.status-EJECUTADO { border-color: var(--success); color: var(--success); }
+        td select.status-Otros { border-color: var(--text-secondary); color: var(--text-secondary); }
+
+        .table-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 1.5rem; flex-wrap: wrap; gap: 1rem; }
+        #results-info { font-size: 0.9rem; color: var(--text-secondary); }
+        .pagination-controls button {
+            background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-secondary);
+            padding: 0.5rem 0.8rem; margin: 0 2px; border-radius: 6px; cursor: pointer; transition: all var(--transition-speed); width: auto;
+        }
+        .pagination-controls button:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+        .pagination-controls button.active { background-color: var(--accent); color: var(--bg-secondary); border-color: var(--accent); font-weight: bold; }
+        .pagination-controls button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+        .theme-switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .theme-switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--bg-tertiary); transition: var(--transition-speed); border-radius: 26px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: var(--transition-speed); border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(24px); }
 
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -148,95 +243,123 @@
         .modal-container {
             background: var(--modal-bg); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
             border: 1px solid var(--border-color); border-radius: 16px;
-            width: 95%; max-width: 900px; max-height: 90vh;
-            padding: 1.5rem; display: flex; flex-direction: column;
+            width: 90%; max-width: 900px; padding: 1.5rem;
             transform: scale(0.9); transition: transform var(--transition-speed);
+            display: flex; flex-direction: column; max-height: 95vh;
         }
         .modal-overlay.visible .modal-container { transform: scale(1); }
         .modal-header {
-            flex-shrink: 0; display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem; flex-shrink: 0;
         }
         .modal-header h2 { margin: 0; color: var(--accent); }
         .modal-close-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-secondary); cursor: pointer; padding: 0; }
-        .modal-body {
-            display: flex; gap: 1.5rem; overflow: hidden; flex-grow: 1;
-        }
+        
+        .modal-body { display: flex; gap: 1.5rem; overflow: hidden; flex-grow: 1; }
         .modal-details-section { flex: 6; overflow-y: auto; padding-right: 10px; }
-        .modal-chat-section {
-            flex: 4; display: flex; flex-direction: column;
-            border-left: 1px solid var(--border-color); padding-left: 1.5rem; overflow: hidden;
-        }
-        .modal-chat-section h4 {
-            margin-top: 0; margin-bottom: 1rem; color: var(--text-secondary);
-            text-transform: uppercase; font-size: 1rem; letter-spacing: 1px;
-        }
+        .modal-chat-section { flex: 4; display: flex; flex-direction: column; border-left: 1px solid var(--border-color); padding-left: 1.5rem; overflow: hidden; }
+        .modal-chat-section h4 { margin-top: 0; margin-bottom: 1rem; color: var(--text-secondary); text-transform: uppercase; font-size: 1rem; letter-spacing: 1px; }
         .modal-details-section .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; }
         .modal-details-section .detail-item strong { display: block; color: var(--text-secondary); margin-bottom: 0.25rem; font-size: 0.875rem; text-transform: uppercase; }
-        .modal-details-section .detail-item span { color: var(--text-primary); font-size: 1rem; word-wrap: break-word; }
+        .modal-details-section .detail-item span, .modal-details-section .detail-item input, .modal-details-section .detail-item select, .modal-details-section .detail-item textarea {
+            width: 100%; padding: 0.5rem; font-size: 0.9rem; border: 1px solid var(--border-color);
+            border-radius: 8px; background: var(--bg-tertiary); color: var(--text-primary);
+        }
         .modal-details-section .full-width { grid-column: 1 / -1; }
-        #modal-obs-planificacion {
-            display: block; white-space: pre-wrap; background-color: var(--bg-primary);
-            padding: 0.5rem; border-radius: 6px; margin-top: 0.5rem; max-height: 150px;
-            overflow-y: auto; font-style: italic;
+        .modal-details-section .currency-input { position: relative; }
+        .modal-details-section .currency-input::before {
+            content: "$"; position: absolute; left: 10px; top: 50%;
+            transform: translateY(-50%); color: var(--text-secondary);
         }
+        .modal-details-section .currency-input input { padding-left: 25px; }
 
-        #modal-chat-history {
-            flex-grow: 1; overflow-y: auto; padding: 0.5rem;
-            display: flex; flex-direction: column; gap: 0.75rem;
-        }
-        .chat-message {
-            max-width: 80%; padding: 0.6rem 0.9rem; border-radius: 12px;
-            font-size: 0.9rem; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word;
-        }
-        .chat-message.ejecutiva {
-            background-color: var(--chat-bubble-ejecutiva);
-            color: var(--text-primary);
-            align-self: flex-start; border-bottom-left-radius: 4px;
-        }
-        .chat-message.planificador {
-            background-color: var(--chat-bubble-planificador);
-            color: var(--text-primary);
-            align-self: flex-end; border-bottom-right-radius: 4px;
-        }
-        .chat-message .sender {
-            display: block; font-size: 0.75rem; font-weight: 600;
-            margin-bottom: 0.25rem; opacity: 0.8;
-        }
-        #modal-chat-form {
-            display: flex; gap: 0.5rem; padding-top: 1rem;
-            border-top: 1px solid var(--border-color); flex-shrink: 0;
-        }
+        #modal-chat-history { flex-grow: 1; overflow-y: auto; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
+        .chat-message { max-width: 80%; padding: 0.6rem 0.9rem; border-radius: 12px; font-size: 0.9rem; line-height: 1.4; white-space: pre-wrap; word-wrap: break-word; }
+        .chat-message.ejecutiva { background-color: var(--chat-bubble-ejecutiva); color: var(--text-primary); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .chat-message.planificador { background-color: var(--chat-bubble-planificador); color: var(--text-primary); align-self: flex-end; border-bottom-right-radius: 4px; }
+        .chat-message .sender { display: block; font-size: 0.75rem; font-weight: 600; margin-bottom: 0.25rem; opacity: 0.8; }
+        
+        #modal-chat-form { display: flex; gap: 0.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); flex-shrink: 0; }
         #modal-chat-form input { flex-grow: 1; }
         #modal-chat-form button { width: auto; }
+        
+        .modal-footer { margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.5rem; display: flex; justify-content: flex-end; gap: 1rem; flex-shrink: 0; }
+        .modal-footer button { width: auto; padding: 0.5rem 1.2rem; font-size: 0.9rem; }
+
+        #tecnico-select-modal .modal-container { max-width: 500px; }
+        #tecnico-list { max-height: 40vh; overflow-y: auto; padding-right: 1rem; }
+        .tecnico-check-item { display: flex; align-items: center; gap: 1rem; padding: 0.75rem; border-radius: 8px; transition: background-color var(--transition-speed); }
+        .tecnico-check-item:hover { background-color: var(--bg-tertiary); }
+        .tecnico-check-item input[type="checkbox"] { width: 1.2em; height: 1.2em; accent-color: var(--accent); }
+        .tecnico-check-item label { margin-bottom: 0; font-weight: normal; font-size: 1rem; width: 100%; cursor: pointer; }
+        
+        #bulk-add-modal .modal-content { display: flex; flex-direction: column; }
+        
+        /* --- NUEVOS ESTILOS PARA FILTROS DESPLEGABLES --- */
+        #filter-wrapper {
+            display: none; /* Oculto por defecto */
+            margin-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+        }
+        .filter-header {
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+        }
+        .filter-header h2 { margin: 0; }
+        .toggle-icon { transition: transform 0.3s; }
+        .toggle-icon.rotated { transform: rotate(180deg); }
 
         @media (max-width: 992px) {
             .modal-body { flex-direction: column; }
             .modal-chat-section { border-left: none; border-top: 1px solid var(--border-color); padding-left: 0; padding-top: 1rem; max-height: 40vh; }
         }
+        @media (max-width: 768px) {
+            .container { padding: 0.5rem; }
+            .filtros-container { grid-template-columns: 1fr; }
+            th, td { padding: 0.6rem 0.4rem; font-size: 0.75rem; }
+            td input, td select { padding: 0.3rem; font-size: 0.75rem; min-width: 70px; }
+            .tecnico-display .tecnico-names { font-size: 0.75rem; min-height: 30px; }
+            .btn-select-tecnicos { font-size: 0.7rem; padding: 0.3rem 0.5rem; }
+            .action-cell button { font-size: 0.7rem; padding: 0.2rem 0.4rem; }
+            .modal-container { width: 95%; padding: 1rem; max-height: 90vh; }
+            .modal-details-section .detail-grid { grid-template-columns: 1fr; }
+            .modal-footer { padding-top: 1rem; }
+            .modal-footer button { width: 100%; }
+        }
+         @media (max-width: 600px) {
+            .header-controls { flex-direction: column; gap: 1rem; align-items: flex-start; }
+            .action-buttons { width: 100%; justify-content: space-between; }
+        }
+th[data-sort] {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+th[data-sort]:hover {
+    background-color: var(--bg-tertiary);
+}
     </style>
 </head>
 <body>
 
-    <div id="login-view">
+    <div id="login-container">
         <div class="card login-card">
-            <h2>Acceso de Ejecutivo</h2>
+            <h2>Acceso de Planificador</h2>
             <form id="login-form">
                 <label for="email">Correo Electrónico</label>
-                <input type="email" id="email" required autocomplete="email">
+                <input type="email" id="email" required>
                 <label for="password">Contraseña</label>
-                <input type="password" id="password" required autocomplete="current-password">
-                <button type="submit">Iniciar Sesión</button>
+                <input type="password" id="password" required>
+                <button type="submit" style="margin-top: 1rem;">Acceder</button>
             </form>
-            <button id="register-button" class="secondary-action">Registrar Nuevo Ejecutivo</button>
             <p id="error-message"></p>
         </div>
     </div>
 
-    <div id="ejecutivo-view" style="display: none;">
+    <div id="main-content" style="display: none;">
         <div class="container">
-            <header class="header-controls">
-                <h1 id="welcome-message">Portal del Ejecutivo</h1>
+             <div class="header-controls">
+                <h1 id="header-title">Portal del Planificador</h1>
                 <div class="action-buttons">
                     <div class="notification-bell">
                         <button id="notif-bell-btn" aria-label="Notificaciones">
@@ -245,8 +368,7 @@
                         <span id="notif-count"></span>
                         <div id="notif-panel"></div>
                     </div>
-
-                    <button id="logout-button" class="icon-btn">Cerrar Sesión</button>
+                    <button id="logout-button" class="icon-btn logout">Cerrar Sesión</button>
                     <div class="theme-switch-wrapper">
                         <label class="theme-switch">
                             <input type="checkbox" id="theme-toggle">
@@ -254,114 +376,157 @@
                         </label>
                     </div>
                 </div>
-            </header>
-
-            <div class="card">
-                <h2 id="form-title">📝 Generar Nueva Solicitud</h2>
-                <form id="form-ejecutivo">
-                    <input type="hidden" id="edit-service-id">
-                    <div class="form-grid">
-                        <div><label for="numRequerimiento">Nº Requerimiento</label><input type="text" id="numRequerimiento" required></div>
-                        <div><label for="numNV">Nº de NV</label><input type="text" id="numNV" required></div>
-                        <div class="full-width"><label for="cliente">Nombre del Cliente</label><input type="text" id="cliente" required></div>
-
-                        <div>
-                            <label for="montoServicio">Monto del Servicio con IVA:</label>
-                            <div class="currency-input">
-                                <input type="text" id="montoServicio" name="montoServicio" placeholder="Ej: 15.000" onkeyup="formatCurrency(this)" required>
-                            </div>
-                        </div>
-                        <div>
-                            <label for="tipoServicio">Tipo de Servicio:</label>
-                            <select id="tipoServicio" name="tipoServicio" required>
-                                <option value="">Seleccione un tipo</option>
-                                </select>
-                        </div>
-                        <div>
-                            <label for="tieneRepuestos">¿Tiene Repuestos?</label>
-                            <select id="tieneRepuestos" required>
-                                <option value="No" selected>No</option>
-                                <option value="Sí">Sí</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="repuestosDespachados">¿Repuestos Despachados?</label>
-                            <select id="repuestosDespachados" required disabled>
-                                <option value="No" selected>No</option>
-                                <option value="Pendiente">Pendiente</option>
-                                <option value="Sí">Sí</option>
-                            </select>
-                        </div>
-                        <div class="full-width"><label for="direccion">Dirección</label><input type="text" id="direccion" required></div>
-                        <div class="full-width"><label for="fechaProgramacion">Fecha Programación Sugerida</label><input type="date" id="fechaProgramacion" required></div>
-                        <div><label for="nomContacto">Nombre Contacto</label><input type="text" id="nomContacto" required></div>
-                        <div><label for="numContacto">Teléfono Contacto</label><input type="tel" id="numContacto" required></div>
-                        <div class="full-width"><label for="infoServicio">Información del Servicio</label><textarea id="infoServicio" rows="3" required></textarea></div>
-                    </div>
-                    <button type="submit" id="submit-button">Generar Solicitud</button>
-                    <button type="button" id="cancel-edit-button" class="secondary-action" style="display: none;">Cancelar Edición</button>
-                </form>
             </div>
-            <div class="card">
-                <h2>📂 Mis Solicitudes (en tiempo real)</h2>
 
-                <div class="filter-controls">
-                    <input type="search" id="search-input" placeholder="Buscar por Nº REQ, Nº NV o Cliente...">
-                    <select id="status-filter">
-                        <option value="Todos">Todos los Estados</option>
-                        <option value="Pendiente">Pendiente</option>
-                        <option value="Confirmado">Confirmado</option>
-                        <option value="En.Progreso">En Progreso</option>
-                        <option value="Completado">Completado</option>
-                    </select>
+            <div class="card">
+                <div class="filter-header" id="toggle-filters-btn">
+                    <h2>🛠 Filtros y Controles</h2>
+                    <span class="toggle-icon">▼</span>
                 </div>
-                <div class="table-container">
+            
+                <div id="filter-wrapper">
+                    <div class="filtros-container">
+                        <div>
+                            <label for="filtro-busqueda">Buscar</label>
+                            <input type="text" id="filtro-busqueda" placeholder="Nº Req, Cliente, etc.">
+                        </div>
+                        <div>
+                            <label for="filtro-estado">Filtrar por estado</label>
+                            <select id="filtro-estado">
+                                <option value="todos">Todos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filtro-vendedor">Filtrar por vendedor</label>
+                            <select id="filtro-vendedor">
+                                <option value="todos">Todos</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filtro-tipo-servicio">Filtrar por Tipo Servicio</label>
+                            <select id="filtro-tipo-servicio">
+                                <option value="todos">Todos</option>
+                            </select>
+                        </div>
+                         <div>
+                            <label for="filtro-tecnico">Filtrar por Técnico</label>
+                            <select id="filtro-tecnico">
+                                <option value="todos">Todos</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label> </label>
+                            <button id="abrir-modal-masivo" class="icon-btn" style="width: 100%; justify-content: center;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M14 8a1 1 0 0 1-1 1H9v4a1 1 0 0 1-2 0V9H3a1 1 0 0 1 0-2h4V3a1 1 0 0 1 2 0v4h4a1 1 0 0 1 1 1z"/></svg>
+                                    Masivo
+                            </button>
+                        </div>
+                            <div>
+                            <label> </label>
+                            <button id="exportar-csv" class="icon-btn" style="width: 100%; justify-content: center;">
+                                    <svg width="16" height="16" fill="currentColor" viewBox="0 0 20 20"><path d="M14.707 7.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L9 10.586V3a1 1 0 112 0v7.586l2.707-2.707a1 1 0 011.414 0zM4 14a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z"></path></svg>
+                                    CSV
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                 <h2>Servicios Registrados</h2>
+                 <div class="table-container">
                     <table>
                         <thead>
                             <tr>
-                                <th>Nº Req.</th>
-                                <th>Cliente</th>
-                                <th>Monto</th> <th>Tipo Servicio</th> <th>F. Sugerida</th>
-                                <th>F. Asignada</th>
-                                <th>Últ. Modificación</th>
+                                <th data-sort="numRequerimiento">Nº Req.<span class="sort-indicator"></span></th>
+                                <th data-sort="numNV">Nº NV<span class="sort-indicator"></span></th>
+                                <th data-sort="cliente">Cliente<span class="sort-indicator"></span></th>
+                                <th data-sort="direccion">Dirección Completa<span class="sort-indicator"></span></th>
+                                <th data-sort="tipoServicio">Tipo Servicio<span class="sort-indicator"></span></th>
+                                <th data-sort="timestamp">Fecha Creación<span class="sort-indicator"></span></th> <th>Tiene Rep.</th>
+                                <th>Rep. Desp.</th>
+                                <th>Fecha Asignada</th>
+                                <th>H. Traslado</th>
+                                <th>H. Inicio</th>
+                                <th>H. Término</th>
+                                <th>Técnico(s)</th>
                                 <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
-                        <tbody id="tabla-mis-solicitudes"></tbody>
+                        <tbody id="tabla-servicios"></tbody>
                     </table>
+                </div>
+                <div class="table-footer">
+                    <span id="results-info"></span>
+                    <div id="pagination-controls" class="pagination-controls"></div>
                 </div>
             </div>
         </div>
     </div>
-
+    
     <div class="modal-overlay" id="service-modal">
         <div class="modal-container">
             <div class="modal-header">
-                <h2 id="modal-req-num"></h2>
-                <button class="modal-close-btn" id="modal-close">&times;</button>
+                <h2 id="modal-title-req-num">Servicio: Req #<span id="modal-req-num-display"></span></h2>
+                <button class="modal-close-btn" data-modal-id="service-modal">×</button>
             </div>
+            
             <div class="modal-body">
                 <div class="modal-details-section">
-                     <div class="detail-grid">
-                        <div class="detail-item"><strong>Cliente:</strong> <span id="modal-cliente"></span></div>
-                        <div class="detail-item"><strong>Nº NV:</strong> <span id="modal-numNV"></span></div>
-                        <div class="detail-item full-width"><strong>Dirección:</strong> <span id="modal-direccion"></span></div>
-                        <div class="detail-item"><strong>Contacto:</strong> <span id="modal-contacto"></span></div>
-                        <div class="detail-item"><strong>Teléfono:</strong> <span id="modal-telefono"></span></div>
-                        <div class="detail-item"><strong>Monto Servicio:</strong> <span id="modal-montoServicio"></span></div>
-                        <div class="detail-item"><strong>Tipo Servicio:</strong> <span id="modal-tipoServicio"></span></div>
-                        <div class="detail-item"><strong>Tiene Repuestos:</strong> <span id="modal-tieneRepuestos"></span></div>
-                        <div class="detail-item"><strong>Repuestos Despachados:</strong> <span id="modal-repDespachados"></span></div>
-                        <div class="detail-item"><strong>Fecha Sugerida (Ejecutivo):</strong> <span id="modal-fecha-programacion"></span></div>
-                        <div class="detail-item"><strong>Fecha Asignada (Planificador):</strong> <span id="modal-fecha-asignada"></span></div>
+                    <div class="detail-grid">
+                        <div class="detail-item"><strong>Nº Req:</strong> <input type="text" id="modal-numRequerimiento-input" data-field="numRequerimiento"></div>
+                        <div class="detail-item"><strong>Nº NV:</strong> <input type="text" id="modal-numNV-input" data-field="numNV"></div>
+                        <div class="detail-item"><strong>Cliente:</strong> <input type="text" id="modal-cliente-input" data-field="cliente"></div>
+                        <div class="detail-item">
+                            <strong>Monto Servicio:</strong>
+                            <div class="currency-input"><input type="text" id="modal-montoServicio-input" data-field="montoServicio" onkeyup="formatCurrency(this)"></div>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Tipo Servicio:</strong>
+                            <select id="modal-tipoServicio-select" data-field="tipoServicio"><option value="">Seleccione un tipo</option></select>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <strong>Región:</strong>
+                            <select id="modal-region-select" data-field="region"><option value="">Seleccione Región</option></select>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Comuna:</strong>
+                            <select id="modal-comuna-select" data-field="comuna"><option value="">Seleccione Comuna</option></select>
+                        </div>
+                        <div class="detail-item full-width"><strong>Dirección (Calle/Núm):</strong> <input type="text" id="modal-direccion-input" data-field="direccion"></div>
+                        <div class="detail-item"><strong>Vendedor:</strong> <input type="email" id="modal-vendedor-input" data-field="vendedor"></div>
+                        <div class="detail-item"><strong>Contacto:</strong> <input type="text" id="modal-contacto-input" data-field="nomContacto"></div>
+                        <div class="detail-item"><strong>Teléfono:</strong> <input type="text" id="modal-telefono-input" data-field="numContacto"></div>
+                        <div class="detail-item">
+                            <strong>Tiene Repuestos:</strong>
+                            <select id="modal-tieneRepuestos-select" data-field="tieneRepuestos">
+                                <option value="Sí">Sí</option><option value="No">No</option><option value="N/A">N/A</option>
+                            </select>
+                        </div>
+                        <div class="detail-item">
+                            <strong>Repuestos Despachados:</strong>
+                            <select id="modal-repDespachados-select" data-field="repuestosDespachados">
+                                <option value="Sí">Sí</option><option value="No">No</option><option value="N/A">N/A</option>
+                            </select>
+                        </div>
+                        <div class="detail-item"><strong>Fecha Asignada:</strong> <span id="modal-fechaAsignada"></span></div>
+                        <div class="detail-item"><strong>Hora Traslado:</strong> <span id="modal-horaTraslado"></span></div>
+                        <div class="detail-item"><strong>Hora Inicio:</strong> <span id="modal-horaInicio"></span></div>
+                        <div class="detail-item"><strong>Hora Término:</strong> <span id="modal-horaTermino"></span></div>
+                        <div class="detail-item"><strong>Técnico(s) Asignado(s):</strong> <span id="modal-tecnico"></span></div>
                         <div class="detail-item"><strong>Estado Actual:</strong> <span id="modal-estado"></span></div>
-                        <div class="detail-item"><strong>Fecha Creación:</strong> <span id="modal-fecha-solicitud"></span></div>
-                        <div class="detail-item full-width"><strong>Última Edición:</strong> <span id="modal-fecha-edicion"></span></div>
-                        <div class="detail-item full-width"><strong>Info. Servicio:</strong> <span id="modal-info-servicio"></span></div>
                         <div class="detail-item full-width">
-                            <strong>📝 Observaciones de Planificación:</strong>
-                            <span id="modal-obs-planificacion"></span>
+                            <strong>Info. Servicio:</strong>
+                            <textarea id="modal-info-servicio-textarea" rows="3" data-field="infoServicio"></textarea>
+                        </div>
+                        <div class="detail-item"><strong>Fecha Creación:</strong> <span id="modal-fecha-solicitud"></span></div>
+                        <div class="detail-item"><strong>Última Edición:</strong> <span id="modal-fecha-edicion"></span></div>
+                        <div class="detail-item full-width">
+                            <strong>Observaciones de Planificación:</strong>
+                            <textarea id="modal-observaciones" rows="3" data-field="observacionesPlanificacion"></textarea>
                         </div>
                     </div>
                 </div>
@@ -370,12 +535,53 @@
                     <div id="modal-chat-history"></div>
                     <form id="modal-chat-form">
                         <input type="text" id="modal-chat-input" placeholder="Escribe un mensaje..." required>
-                        <button type="submit">Enviar</button>
+                        <button type="submit" aria-label="Enviar mensaje">Enviar</button>
                     </form>
                 </div>
             </div>
+            
+            <div class="modal-footer">
+                <button id="modal-guardar-btn">Guardar Cambios</button>
+            </div>
         </div>
     </div>
+    
+    <div class="modal-overlay" id="tecnico-select-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Seleccionar Técnicos</h2>
+                <button class="modal-close-btn" data-modal-id="tecnico-select-modal">×</button>
+            </div>
+            <div class="modal-content">
+                <div id="tecnico-list"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="tecnico-modal-cancelar-btn">Cancelar</button>
+                <button id="tecnico-modal-guardar-btn" style="background-color: var(--success);">Confirmar Selección</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="bulk-add-modal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>Agregar Servicios por Copiar y Pegar</h2>
+                <button class="modal-close-btn" data-modal-id="bulk-add-modal">×</button>
+            </div>
+            <div class="modal-content">
+                <label for="bulk-paste-area">Pega aquí los datos desde tu planilla (Excel, Google Sheets)</label>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: -0.5rem; margin-bottom: 1rem;">
+                    Asegúrate de que las columnas estén en el siguiente orden: <br>
+                    <strong>Nº Req</strong> | <strong>Nº NV</strong> | <strong>Cliente</strong> | <strong>Monto Servicio</strong> | <strong>Tipo Servicio</strong> | <strong>Vendedor (email)</strong> | <strong>Fecha Asignada</strong> | <strong>H. Traslado</strong> | <strong>H. Inicio</strong> | <strong>H. Termino</strong> | <strong>Técnico(s)</strong> | <strong>Info. Servicio</strong>
+                </p>
+                <textarea id="bulk-paste-area" rows="10" placeholder="Columna 1	Columna 2	Columna 3	..."></textarea>
+            </div>
+            <div class="modal-footer">
+                <button id="bulk-add-save-btn" style="background-color: var(--success);">Procesar y Guardar Servicios</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const firebaseConfig = {
           apiKey: "AIzaSyA9tUGGmMqk85Hljw8H1XoTfX2U5iQu85c",
@@ -383,114 +589,312 @@
           projectId: "control-de-servicios-b8e34",
         };
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
         const db = firebase.firestore();
+        const auth = firebase.auth();
 
-        let currentUser = null;
-        let misServiciosCache = [];
-        let notificacionesCache = [];
-        let unsubscribeListener = null;
-        let unsubscribeChat = null;
-        let unsubscribeNotificaciones = null;
+        // --- DATOS GEOGRÁFICOS ---
+        const regionesYComunas = {
+            "Arica y Parinacota": ["Arica", "Camarones", "Putre", "General Lagos"],
+            "Tarapacá": ["Iquique", "Alto Hospicio", "Pozo Almonte", "Camiña", "Colchane", "Huara", "Pica"],
+            "Antofagasta": ["Antofagasta", "Mejillones", "Sierra Gorda", "Taltal", "Calama", "Ollagüe", "San Pedro de Atacama", "Tocopilla", "María Elena"],
+            "Atacama": ["Copiapó", "Caldera", "Tierra Amarilla", "Chañaral", "Diego de Almagro", "Vallenar", "Alto del Carmen", "Freirina", "Huasco"],
+            "Coquimbo": ["La Serena", "Coquimbo", "Andacollo", "La Higuera", "Paiguano", "Vicuña", "Illapel", "Canela", "Los Vilos", "Salamanca", "Ovalle", "Combarbalá", "Monte Patria", "Punitaqui", "Río Hurtado"],
+            "Valparaíso": ["Valparaíso", "Casablanca", "Concón", "Juan Fernández", "Puchuncaví", "Quintero", "Viña del Mar", "Isla de Pascua", "Los Andes", "Calle Larga", "Rinconada", "San Esteban", "La Ligua", "Cabildo", "Papudo", "Petorca", "Zapallar", "Quillota", "Calera", "Hijuelas", "La Cruz", "Nogales", "San Antonio", "Algarrobo", "Cartagena", "El Quisco", "El Tabo", "Santo Domingo", "San Felipe", "Catemu", "Llaillay", "Panquehue", "Putaendo", "Santa María", "Quilpué", "Limache", "Olmué", "Villa Alemana"],
+            "Metropolitana": ["Santiago", "Cerrillos", "Cerro Navia", "Conchalí", "El Bosque", "Estación Central", "Huechuraba", "Independencia", "La Cisterna", "La Florida", "La Granja", "La Pintana", "La Reina", "Las Condes", "Lo Barnechea", "Lo Espejo", "Lo Prado", "Macul", "Maipú", "Ñuñoa", "Pedro Aguirre Cerda", "Peñalolén", "Providencia", "Pudahuel", "Quilicura", "Quinta Normal", "Recoleta", "Renca", "San Joaquín", "San Miguel", "San Ramón", "Vitacura", "Puente Alto", "Pirque", "San José de Maipo", "Colina", "Lampa", "Tiltil", "San Bernardo", "Buin", "Calera de Tango", "Paine", "Melipilla", "Alhué", "Curacaví", "María Pinto", "San Pedro", "Talagante", "El Monte", "Isla de Maipo", "Padre Hurtado", "Peñaflor"],
+            "O'Higgins": ["Rancagua", "Codegua", "Coinco", "Coltauco", "Doñihue", "Graneros", "Las Cabras", "Machalí", "Malloa", "Mostazal", "Olivar", "Peumo", "Pichidegua", "Quinta de Tilcoco", "Rengo", "Requínoa", "San Vicente", "Pichilemu", "La Estrella", "Litueche", "Marchihue", "Navidad", "Paredones", "San Fernando", "Chépica", "Chimbarongo", "Lolol", "Nancagua", "Palmilla", "Peralillo", "Placilla", "Pumanque", "Santa Cruz"],
+            "Maule": ["Talca", "Constitución", "Curepto", "Empedrado", "Maule", "Pelarco", "Pencahue", "Río Claro", "San Clemente", "San Rafael", "Cauquenes", "Chanco", "Pelluhue", "Curicó", "Hualañé", "Licantén", "Molina", "Rauco", "Romeral", "Sagrada Familia", "Teno", "Vichuquén", "Linares", "Colbún", "Longaví", "Parral", "Retiro", "San Javier", "Villa Alegre", "Yerbas Buenas"],
+            "Ñuble": ["Chillán", "Bulnes", "Cobquecura", "Coelemu", "Coihueco", "Chillán Viejo", "El Carmen", "Ninhue", "Ñiquén", "Pemuco", "Pinto", "Portezuelo", "Quillón", "Quirihue", "Ránquil", "San Carlos", "San Fabián", "San Ignacio", "San Nicolás", "Treguaco", "Yungay"],
+            "Biobío": ["Concepción", "Coronel", "Chiguayante", "Florida", "Hualqui", "Lota", "Penco", "San Pedro de la Paz", "Santa Juana", "Talcahuano", "Tomé", "Hualpén", "Lebu", "Arauco", "Cañete", "Contulmo", "Curanilahue", "Los Álamos", "Tirúa", "Los Ángeles", "Antuco", "Cabrero", "Laja", "Mulchén", "Nacimiento", "Negrete", "Quilaco", "Quilleco", "San Rosendo", "Santa Bárbara", "Tucapel", "Yumbel", "Alto Biobío"],
+            "Araucanía": ["Temuco", "Carahue", "Cunco", "Curarrehue", "Freire", "Galvarino", "Gorbea", "Lautaro", "Loncoche", "Melipeuco", "Nueva Imperial", "Padre Las Casas", "Perquenco", "Pitrufquén", "Pucón", "Saavedra", "Teodoro Schmidt", "Toltén", "Vilcún", "Villarrica", "Cholchol", "Angol", "Collipulli", "Curacautín", "Ercilla", "Lonquimay", "Los Sauces", "Lumaco", "Purén", "Renaico", "Traiguén", "Victoria"],
+            "Los Ríos": ["Valdivia", "Corral", "Lanco", "Los Lagos", "Máfil", "Mariquina", "Paillaco", "Panguipulli", "La Unión", "Futrono", "Lago Ranco", "Río Bueno"],
+            "Los Lagos": ["Puerto Montt", "Calbuco", "Cochamó", "Fresia", "Frutillar", "Los Muermos", "Llanquihue", "Maullín", "Puerto Varas", "Castro", "Ancud", "Chonchi", "Curaco de Vélez", "Dalcahue", "Puqueldón", "Queilén", "Quellón", "Quemchi", "Quinchao", "Osorno", "Puerto Octay", "Purranque", "Puyehue", "Río Negro", "San Juan de la Costa", "San Pablo", "Chaitén", "Futaleufú", "Hualaihué", "Palena"],
+            "Aysén": ["Coyhaique", "Lago Verde", "Aysén", "Cisnes", "Guaitecas", "Cochrane", "O'Higgins", "Tortel", "Chile Chico", "Río Ibáñez"],
+            "Magallanes": ["Punta Arenas", "Laguna Blanca", "Río Verde", "San Gregorio", "Cabo de Hornos", "Antártica", "Porvenir", "Primavera", "Timaukel", "Natales", "Torres del Paine"]
+        };
+
+        const state = {
+            serviciosCache: [],
+            tecnicosCache: [],
+            vendedoresCache: [],
+            filteredServices: [],
+            notificacionesCache: [],
+            sortConfig: { column: 'timestamp', order: 'desc' },
+            pagination: { currentPage: 1, rowsPerPage: 20 },
+            currentUser: null,
+        };
+        let unsubscribeServicios;
+        let unsubscribeChat;
+        let unsubscribeNotificaciones;
 
         const ui = {
-            loginView: document.getElementById('login-view'),
-            ejecutivoView: document.getElementById('ejecutivo-view'),
-            loginForm: document.getElementById('login-form'),
-            registerButton: document.getElementById('register-button'),
-            emailInput: document.getElementById('email'),
-            passwordInput: document.getElementById('password'),
-            errorMessage: document.getElementById('error-message'),
+            loginContainer: document.getElementById('login-container'),
+            mainContent: document.getElementById('main-content'),
             logoutButton: document.getElementById('logout-button'),
-            welcomeMessage: document.getElementById('welcome-message'),
-            themeToggle: document.getElementById('theme-toggle'),
+            headerTitle: document.getElementById('header-title'),
             notifBellBtn: document.getElementById('notif-bell-btn'),
             notifCount: document.getElementById('notif-count'),
             notifPanel: document.getElementById('notif-panel'),
-            formEjecutivo: document.getElementById('form-ejecutivo'),
-            formTitle: document.getElementById('form-title'),
-            submitButton: document.getElementById('submit-button'),
-            cancelButton: document.getElementById('cancel-edit-button'),
-            editServiceId: document.getElementById('edit-service-id'),
-            numRequerimiento: document.getElementById('numRequerimiento'),
-            numNV: document.getElementById('numNV'),
-            cliente: document.getElementById('cliente'),
-            montoServicio: document.getElementById('montoServicio'),
-            tipoServicio: document.getElementById('tipoServicio'),
-            tieneRepuestos: document.getElementById('tieneRepuestos'),
-            repuestosDespachados: document.getElementById('repuestosDespachados'),
-            direccion: document.getElementById('direccion'),
-            fechaProgramacion: document.getElementById('fechaProgramacion'),
-            nomContacto: document.getElementById('nomContacto'),
-            numContacto: document.getElementById('numContacto'),
-            infoServicio: document.getElementById('infoServicio'),
-            misSolicitudesTbody: document.getElementById('tabla-mis-solicitudes'),
-            searchInput: document.getElementById('search-input'),
-            statusFilter: document.getElementById('status-filter'),
+            loginForm: document.getElementById('login-form'),
+            emailInput: document.getElementById('email'),
+            passwordInput: document.getElementById('password'),
+            errorMessage: document.getElementById('error-message'),
+            tablaServiciosBody: document.getElementById('tabla-servicios'),
+            filtroBusqueda: document.getElementById('filtro-busqueda'),
+            filtroEstado: document.getElementById('filtro-estado'),
+            filtroVendedor: document.getElementById('filtro-vendedor'),
+            filtroTipoServicio: document.getElementById('filtro-tipo-servicio'),
+            filtroTecnico: document.getElementById('filtro-tecnico'), // NUEVO SELECTOR
+            resultsInfo: document.getElementById('results-info'),
+            paginationControls: document.getElementById('pagination-controls'),
+            themeToggle: document.getElementById('theme-toggle'),
+            abrirModalMasivoBtn: document.getElementById('abrir-modal-masivo'),
+            exportarCsvBtn: document.getElementById('exportar-csv'),
             modal: {
                 overlay: document.getElementById('service-modal'),
-                closeBtn: document.getElementById('modal-close'),
-                reqNum: document.getElementById('modal-req-num'),
-                cliente: document.getElementById('modal-cliente'),
-                numNV: document.getElementById('modal-numNV'),
-                direccion: document.getElementById('modal-direccion'),
-                contacto: document.getElementById('modal-contacto'),
-                telefono: document.getElementById('modal-telefono'),
-                montoServicio: document.getElementById('modal-montoServicio'),
-                tipoServicio: document.getElementById('modal-tipoServicio'),
-                tieneRepuestos: document.getElementById('modal-tieneRepuestos'),
-                repDespachados: document.getElementById('modal-repDespachados'),
-                estado: document.getElementById('modal-estado'),
-                fechaSolicitud: document.getElementById('modal-fecha-solicitud'),
-                fechaEdicion: document.getElementById('modal-fecha-edicion'),
-                infoServicio: document.getElementById('modal-info-servicio'),
-                obsPlanificacion: document.getElementById('modal-obs-planificacion'),
-                fechaProgramacion: document.getElementById('modal-fecha-programacion'),
-                fechaAsignada: document.getElementById('modal-fecha-asignada'),
+                titleReqNumDisplay: document.getElementById('modal-req-num-display'),
+                numRequerimientoInput: document.getElementById('modal-numRequerimiento-input'),
+                clienteInput: document.getElementById('modal-cliente-input'),
+                numNVInput: document.getElementById('modal-numNV-input'),
+                montoServicioInput: document.getElementById('modal-montoServicio-input'),
+                tipoServicioSelect: document.getElementById('modal-tipoServicio-select'),
+                // Campos de Dirección nuevos
+                regionSelect: document.getElementById('modal-region-select'),
+                comunaSelect: document.getElementById('modal-comuna-select'),
+                direccionInput: document.getElementById('modal-direccion-input'),
+                
+                vendedorInput: document.getElementById('modal-vendedor-input'),
+                estadoDisplay: document.getElementById('modal-estado'),
+                tecnicoDisplay: document.getElementById('modal-tecnico'),
+                fechaAsignadaDisplay: document.getElementById('modal-fechaAsignada'),
+                horaTrasladoDisplay: document.getElementById('modal-horaTraslado'),
+                horaInicioDisplay: document.getElementById('modal-horaInicio'),
+                horaTerminoDisplay: document.getElementById('modal-horaTermino'),
+                contactoInput: document.getElementById('modal-contacto-input'),
+                telefonoInput: document.getElementById('modal-telefono-input'),
+                tieneRepuestosSelect: document.getElementById('modal-tieneRepuestos-select'),
+                repDespachadosSelect: document.getElementById('modal-repDespachados-select'),
+                fechaSolicitudDisplay: document.getElementById('modal-fecha-solicitud'),
+                fechaEdicionDisplay: document.getElementById('modal-fecha-edicion'),
+                infoServicioTextarea: document.getElementById('modal-info-servicio-textarea'),
+                observaciones: document.getElementById('modal-observaciones'),
+                guardarBtn: document.getElementById('modal-guardar-btn'),
                 chatHistory: document.getElementById('modal-chat-history'),
                 chatForm: document.getElementById('modal-chat-form'),
                 chatInput: document.getElementById('modal-chat-input'),
-            }
+            },
+            tecnicoModal: {
+                overlay: document.getElementById('tecnico-select-modal'),
+                list: document.getElementById('tecnico-list'),
+                guardarBtn: document.getElementById('tecnico-modal-guardar-btn'),
+                cancelarBtn: document.getElementById('tecnico-modal-cancelar-btn'),
+            },
+            bulkAddModal: {
+                overlay: document.getElementById('bulk-add-modal'),
+                pasteArea: document.getElementById('bulk-paste-area'),
+                saveBtn: document.getElementById('bulk-add-save-btn'),
+            },
+            modalCloseBtns: document.querySelectorAll('.modal-close-btn'),
         };
 
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                currentUser = user;
-                const userName = user.email.split('@')[0];
-                ui.welcomeMessage.textContent = `Bienvenido, ${userName.charAt(0).toUpperCase() + userName.slice(1)}`;
-                ui.loginView.style.display = 'none';
-                ui.ejecutivoView.style.display = 'block';
-                populateTipoServicioDropdowns();
-                listenToMisSolicitudes();
-                listenToNotifications();
+        // --- INICIALIZAR REGIONES EN MODAL ---
+        function cargarRegionesModal() {
+            ui.modal.regionSelect.innerHTML = '<option value="">Seleccione Región</option>';
+            for (const region in regionesYComunas) {
+                ui.modal.regionSelect.add(new Option(region, region));
+            }
+        }
+        cargarRegionesModal();
+
+        function cargarComunasModal(regionSeleccionada) {
+            ui.modal.comunaSelect.innerHTML = '<option value="">Seleccione Comuna</option>';
+            if (regionSeleccionada && regionesYComunas[regionSeleccionada]) {
+                ui.modal.comunaSelect.disabled = false;
+                regionesYComunas[regionSeleccionada].forEach(comuna => {
+                    ui.modal.comunaSelect.add(new Option(comuna, comuna));
+                });
             } else {
-                currentUser = null;
-                if (unsubscribeListener) unsubscribeListener();
-                if (unsubscribeChat) unsubscribeChat();
-                if (unsubscribeNotificaciones) unsubscribeNotificaciones();
-                ui.loginView.style.display = 'flex';
-                ui.ejecutivoView.style.display = 'none';
-                ui.welcomeMessage.textContent = 'Portal del Ejecutivo';
+                ui.modal.comunaSelect.disabled = true;
+            }
+        }
+
+        ui.modal.regionSelect.addEventListener('change', (e) => {
+            cargarComunasModal(e.target.value);
+        });
+
+        // --- LÓGICA DE FILTROS DESPLEGABLES ---
+        const toggleBtn = document.getElementById('toggle-filters-btn');
+        const filterWrapper = document.getElementById('filter-wrapper');
+        const toggleIcon = document.querySelector('.toggle-icon');
+
+        toggleBtn.addEventListener('click', () => {
+            const isHidden = filterWrapper.style.display === 'none';
+            filterWrapper.style.display = isHidden ? 'block' : 'none';
+            if(isHidden) {
+                toggleIcon.classList.add('rotated');
+            } else {
+                toggleIcon.classList.remove('rotated');
             }
         });
 
+        // Función para poblar el filtro de técnicos (LISTA DESPLEGABLE)
+        function populateTechnicianFilterSelect() {
+            const select = ui.filtroTecnico;
+            const currentVal = select.value;
+            select.innerHTML = '<option value="todos">Todos</option>';
+            
+            const sortedTechs = [...state.tecnicosCache].sort();
+
+            sortedTechs.forEach(techName => {
+                select.add(new Option(techName, techName));
+            });
+            
+            // Mantener selección si existe
+            if (sortedTechs.includes(currentVal)) {
+                select.value = currentVal;
+            }
+        }
+
+        const actualizarServicio = async (id, data) => {
+            const finalData = { ...data, fechaEdicion: firebase.firestore.FieldValue.serverTimestamp() };
+            try {
+                await db.collection('servicios').doc(id).update(finalData);
+            } catch (error) {
+                console.error("Error al actualizar servicio: ", error);
+                alert("Error al actualizar el servicio. Por favor, inténtalo de nuevo.");
+            }
+        }
+        
+	    const duplicarServicio = async (id) => { 
+            const servicioOriginal = state.serviciosCache.find(s => s.id === id);
+            if (!servicioOriginal) {
+                alert("No se encontró el servicio original para duplicar.");
+                return;
+            }
+            if (!confirm(`¿Quieres añadir un nuevo día de servicio para el Req. Nº ${servicioOriginal.numRequerimiento || 'N/A'}? \nSe creará una nueva entrada con la misma información base.`)) {
+                return;
+            }
+            const nuevoServicioData = {
+                numRequerimiento: servicioOriginal.numRequerimiento || '',
+                numNV: servicioOriginal.numNV || '',
+                cliente: servicioOriginal.cliente || '',
+                montoServicio: servicioOriginal.montoServicio || '',
+                tipoServicio: servicioOriginal.tipoServicio || '',
+                vendedor: servicioOriginal.vendedor || '',
+                
+                // Duplicamos también la dirección completa
+                direccion: servicioOriginal.direccion || '',
+                region: servicioOriginal.region || '',
+                comuna: servicioOriginal.comuna || '',
+
+                nomContacto: servicioOriginal.nomContacto || '',
+                numContacto: servicioOriginal.numContacto || '',
+                infoServicio: servicioOriginal.infoServicio || '',
+                tieneRepuestos: servicioOriginal.tieneRepuestos || 'No',
+                repuestosDespachados: servicioOriginal.repuestosDespachados || 'N/A',
+                fechaAsignada: "",
+                horaTraslado: "",
+                horaInicio: "",
+                horaTermino: "",
+                tecnicos: servicioOriginal.tecnicos || [],
+                observacionesPlanificacion: "",
+                estado: "Pendiente",
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                fechaEdicion: firebase.firestore.FieldValue.serverTimestamp(),
+            };
+            try {
+                await db.collection('servicios').add(nuevoServicioData);
+                alert('Nuevo día de servicio añadido correctamente. Ahora puedes asignar fecha y técnicos.');
+            } catch (error) {
+                console.error("Error al duplicar el servicio: ", error);
+                alert("Ocurrió un error al añadir el nuevo día de servicio.");
+            }
+        };
+
+        const eliminarServicio = async (id) => {
+            const originalServices = [...state.serviciosCache];
+            state.serviciosCache = state.serviciosCache.filter(s => s.id !== id);
+            applyFiltersAndRender();
+            try {
+                await db.collection('servicios').doc(id).delete();
+            } catch (error) {
+                console.error("Error al eliminar servicio: ", error);
+                alert("Error al eliminar el servicio.");
+                state.serviciosCache = originalServices;
+                applyFiltersAndRender();
+            }
+        };
+
+        function formatTimestamp(timestamp) {
+            if (!timestamp || typeof timestamp.toDate !== 'function') return 'N/A';
+            return timestamp.toDate().toLocaleString('es-CL');
+        }
+        
+        function styleStatusDropdown(selectElement, status) {
+            selectElement.classList.remove('status-Pendiente', 'status-Confirmado', 'status-Esperando-Repuestos', 'status-Otros', 'status-EJECUTADO');
+            if (status) {
+                const statusClass = `status-${status.replace(/\s+/g, '-')}`;
+                selectElement.classList.add(statusClass);
+            }
+        }
+
+        function displayCurrency(value) {
+            if (value === undefined || value === null || value === '' || isNaN(value)) return 'N/A';
+            const numericValue = parseInt(String(value).replace(/\$|\./g, ''), 10);
+            if (isNaN(numericValue)) return 'N/A';
+            return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(numericValue);
+        }
+
+        function formatCurrency(input) {
+            let value = input.value.replace(/[^0-9]/g, '');
+            if (value === '') { input.value = ''; return; }
+            let numericValue = parseInt(value, 10);
+            value = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(numericValue);
+            input.value = value.replace('CLP', '').trim();
+        }
+
+        async function cargarTecnicos() {
+            try {
+                const snapshot = await db.collection('tecnicos').where('activo', '==', true).orderBy('nombre').get();
+                state.tecnicosCache = snapshot.docs.map(doc => doc.data().nombre);
+                populateTechnicianFilterSelect(); 
+            } catch (error) { console.error("Error al cargar técnicos: ", error); }
+        }
+
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                state.currentUser = user;
+                ui.loginContainer.style.display = 'none';
+                ui.mainContent.style.display = 'block';
+                ui.headerTitle.textContent = `Planificador: ${user.email.split('@')[0]}`;
+                await cargarTecnicos();
+                iniciarListenerServicios();
+                listenToNotifications();
+            } else {
+                state.currentUser = null;
+                ui.loginContainer.style.display = 'flex';
+                ui.mainContent.style.display = 'none';
+                if (unsubscribeServicios) unsubscribeServicios();
+                if (unsubscribeChat) unsubscribeChat();
+                if (unsubscribeNotificaciones) unsubscribeNotificaciones();
+            }
+        });
+
+        // --- FUNCIONES DE NOTIFICACIÓN ---
         function listenToNotifications() {
-            if (!currentUser) return;
+            if (!state.currentUser) return;
             if (unsubscribeNotificaciones) unsubscribeNotificaciones();
 
             unsubscribeNotificaciones = db.collection('notificaciones')
-                .where('userId', '==', currentUser.email)
+                .where('userId', '==', state.currentUser.email)
                 .orderBy('timestamp', 'desc')
                 .onSnapshot(snapshot => {
-                    notificacionesCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    state.notificacionesCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderNotifications();
-                }, error => {
-                    console.error("Error al escuchar notificaciones:", error);
-                });
+                }, error => console.error("Error al escuchar notificaciones:", error));
         }
 
         function renderNotifications() {
-            const unreadCount = notificacionesCache.filter(n => !n.leido).length;
+            const unreadCount = state.notificacionesCache.filter(n => !n.leido).length;
             
             if (unreadCount > 0) {
                 ui.notifCount.textContent = unreadCount;
@@ -500,17 +904,15 @@
             }
 
             ui.notifPanel.innerHTML = '';
-            if (notificacionesCache.length === 0) {
+            if (state.notificacionesCache.length === 0) {
                 ui.notifPanel.innerHTML = '<div class="notif-item"><p>No tienes notificaciones.</p></div>';
                 return;
             }
 
-            notificacionesCache.forEach(n => {
+            state.notificacionesCache.forEach(n => {
                 const itemDiv = document.createElement('div');
                 itemDiv.className = 'notif-item';
-                if (!n.leido) {
-                    itemDiv.classList.add('unread');
-                }
+                if (!n.leido) itemDiv.classList.add('unread');
                 itemDiv.dataset.notifId = n.id;
                 itemDiv.dataset.serviceId = n.serviceId;
                 
@@ -538,271 +940,344 @@
                 await db.collection('notificaciones').doc(notifId).update({ leido: true });
             }
 
-            const service = misServiciosCache.find(s => s.id === serviceId);
+            const service = state.serviciosCache.find(s => s.id === serviceId);
             if (service) {
-                openModal(service);
+                openModal('service-modal', service);
             } else {
-                alert("No se pudo encontrar el servicio asociado. Puede que ya no exista.");
+                alert("Servicio no encontrado. Puede haber sido eliminado.");
             }
-
             ui.notifPanel.classList.remove('visible');
         });
         
-        document.addEventListener('click', () => {
-            if (ui.notifPanel.classList.contains('visible')) {
+        document.addEventListener('click', (e) => {
+            if (ui.notifPanel.classList.contains('visible') && !ui.notifPanel.contains(e.target) && !ui.notifBellBtn.contains(e.target)) {
                 ui.notifPanel.classList.remove('visible');
             }
         });
 
-        function populateTipoServicioDropdowns() {
-            const tiposDeServicio = [ "Canal Tradicional", "Descanso Turno", "Montaje", "Otro", "Post Venta", "Proyección Asistencia", "Proyección Mantención", "Proyección Repuestos", "Retail Asistencia", "Retail Mantencion", "Retail Repuestos", "Turno", "Vacaciones" ].sort();
-            const formTipoServicioSelect = ui.tipoServicio;
-            const currentFormSelection = formTipoServicioSelect.value;
-            formTipoServicioSelect.innerHTML = '<option value="">Seleccione un tipo</option>';
-            tiposDeServicio.forEach(tipo => {
-                const option = new Option(tipo, tipo);
-                formTipoServicioSelect.add(option);
+        function iniciarListenerServicios() {
+            ui.tablaServiciosBody.innerHTML = `<tr><td colspan="14" style="text-align: center;">Cargando servicios...</td></tr>`;
+            unsubscribeServicios = db.collection('servicios').orderBy('timestamp', 'desc').onSnapshot(snapshot => {
+                state.serviciosCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                populateVendedorFilter();
+                populateTipoServicioFilter();
+                populateEstadoFilter();
+                applyFiltersAndRender();
+            }, error => {
+                console.error("Error al escuchar servicios:", error);
+                ui.tablaServiciosBody.innerHTML = `<tr><td colspan="14" style="text-align: center; color: var(--danger);">Error al cargar datos.</td></tr>`;
             });
-            formTipoServicioSelect.value = tiposDeServicio.includes(currentFormSelection) ? currentFormSelection : '';
         }
 
-        function listenToMisSolicitudes() {
-            if (!currentUser) return;
-            if (unsubscribeListener) unsubscribeListener();
-            unsubscribeListener = db.collection('servicios')
-                .where('vendedor', '==', currentUser.email)
-                .orderBy('timestamp', 'desc')
-                .onSnapshot(snapshot => {
-                    misServiciosCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    renderTable();
-                }, error => {
-                    console.error("Error escuchando datos:", error);
-                    alert("Error al cargar las solicitudes.");
-                });
+        function populateVendedorFilter() {
+            const vendedores = [...new Set(state.serviciosCache.map(s => s.vendedor).filter(Boolean))].sort();
+            const currentVal = ui.filtroVendedor.value;
+            ui.filtroVendedor.innerHTML = '<option value="todos">Todos</option>';
+            vendedores.forEach(v => ui.filtroVendedor.add(new Option(v.split('@')[0], v)));
+            ui.filtroVendedor.value = vendedores.includes(currentVal) ? currentVal : 'todos';
+        }
+        
+        function populateEstadoFilter() {
+            const estados = [...new Set(state.serviciosCache.map(s => s.estado).filter(Boolean))].sort();
+            const currentVal = ui.filtroEstado.value;
+            ui.filtroEstado.innerHTML = '<option value="todos">Todos</option>';
+            estados.forEach(e => ui.filtroEstado.add(new Option(e,e)));
+            ui.filtroEstado.value = estados.includes(currentVal) ? currentVal : 'todos';
+        }
+
+        function populateTipoServicioFilter() {
+            const tipos = [ "Canal Tradicional", "Descanso Turno", "Montaje", "Otro", "Post Venta", "Premontaje", "Proyección Asistencia", "Proyección Mantención", "Proyección Repuestos", "Puesta en Marcha", "Retail Asistencia", "Retail Mantencion", "Retail Repuestos", "Turno", "Vacaciones" ].sort();
+            
+            const currentFilterVal = ui.filtroTipoServicio.value;
+            ui.filtroTipoServicio.innerHTML = '<option value="todos">Todos</option>';
+            tipos.forEach(t => ui.filtroTipoServicio.add(new Option(t, t)));
+            ui.filtroTipoServicio.value = tipos.includes(currentFilterVal) ? currentFilterVal : 'todos';
+            
+            const currentModalVal = ui.modal.tipoServicioSelect.value;
+            ui.modal.tipoServicioSelect.innerHTML = '<option value="">Seleccione un tipo</option>';
+            tipos.forEach(t => ui.modal.tipoServicioSelect.add(new Option(t, t)));
+            ui.modal.tipoServicioSelect.value = tipos.includes(currentModalVal) ? currentModalVal : '';
+        }
+
+        function applyFiltersAndRender() {
+            const estadoFilter = ui.filtroEstado.value;
+            const vendedorFilter = ui.filtroVendedor.value;
+            const tipoServicioFilter = ui.filtroTipoServicio.value;
+            const tecnicoFilter = ui.filtroTecnico.value;
+            const searchTerm = ui.filtroBusqueda.value.toLowerCase();
+            
+            // 1. Filtrado
+            let result = state.serviciosCache.filter(s => {
+                const matchEstado = estadoFilter === 'todos' || s.estado === estadoFilter;
+                const matchVendedor = vendedorFilter === 'todos' || s.vendedor === vendedorFilter;
+                const matchTipoServicio = tipoServicioFilter === 'todos' || s.tipoServicio === tipoServicioFilter;
+                
+                const matchSearch = searchTerm === '' ||
+                                    (s.numRequerimiento?.toLowerCase().includes(searchTerm)) ||
+                                    (s.numNV?.toLowerCase().includes(searchTerm)) ||
+                                    (s.cliente?.toLowerCase().includes(searchTerm)) ||
+                                    (s.vendedor?.toLowerCase().includes(searchTerm));
+
+                let matchTecnico = true;
+                if (tecnicoFilter !== 'todos') {
+                    const servicioTecnicos = s.tecnicos || [];
+                    matchTecnico = servicioTecnicos.includes(tecnicoFilter);
+                }
+
+                return matchEstado && matchVendedor && matchTipoServicio && matchSearch && matchTecnico;
+            });
+
+            // 2. Lógica de Ordenamiento (MODIFICADO)
+            const col = state.sortConfig.column;
+            const order = state.sortConfig.order === 'asc' ? 1 : -1;
+
+            result.sort((a, b) => {
+                // Lógica especial para el timestamp de Firebase
+                if (col === 'timestamp') {
+                    const valA = a[col]?.seconds || 0;
+                    const valB = b[col]?.seconds || 0;
+                    return (valA - valB) * order;
+                }
+
+                let valA = a[col] || '';
+                let valB = b[col] || '';
+
+                // Si son números (como monto o requerimiento numérico), comparar como tales
+                if (!isNaN(valA) && !isNaN(valB) && valA !== '' && valB !== '') {
+                    return (parseFloat(valA) - parseFloat(valB)) * order;
+                }
+
+                // Comparación de texto estándar
+                return valA.toString().localeCompare(valB.toString(), 'es', { sensitivity: 'base' }) * order;
+            });
+
+            state.filteredServices = result;
+            renderAll();
+        }
+
+        function renderAll() {
+            renderTable();
+            renderPagination();
+            updateSortIndicators();
         }
 
         function renderTable() {
-            const searchTerm = ui.searchInput.value.toLowerCase().trim();
-            const statusFilter = ui.statusFilter.value;
-            const filteredServices = misServiciosCache.filter(s => {
-                const searchMatch = !searchTerm ||
-                    (s.numRequerimiento && s.numRequerimiento.toLowerCase().includes(searchTerm)) ||
-                    (s.numNV && s.numNV.toLowerCase().includes(searchTerm)) ||
-                    (s.cliente && s.cliente.toLowerCase().includes(searchTerm));
-                const estadoClass = s.estado ? s.estado.replace(/\s+/g, '.') : '';
-                const statusMatch = statusFilter === 'Todos' || estadoClass === statusFilter;
-                return searchMatch && statusMatch;
-            });
-            ui.misSolicitudesTbody.innerHTML = '';
-            if (filteredServices.length === 0) {
-                const message = misServiciosCache.length > 0
-                    ? "No se encontraron solicitudes con los filtros aplicados."
-                    : "Aún no has enviado solicitudes.";
-                ui.misSolicitudesTbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">${message}</td></tr>`;
+            ui.tablaServiciosBody.innerHTML = '';
+            const servicesToRender = state.filteredServices;
+            if (servicesToRender.length === 0) {
+                ui.tablaServiciosBody.innerHTML = `<tr><td colspan="14" style="text-align: center;">No hay servicios que mostrar.</td></tr>`;
                 return;
             }
-            filteredServices.forEach(s => {
+            const getBadgeClass = (value) => {
+                switch (value) {
+                    case 'Sí': return 'badge-si';
+                    case 'No': return 'badge-no';
+                    case 'Pendiente': return 'badge-pendiente';
+                    default: return 'badge-na';
+                }
+            };
+            const pageServices = servicesToRender.slice((state.pagination.currentPage - 1) * state.pagination.rowsPerPage, state.pagination.currentPage * state.pagination.rowsPerPage);
+            pageServices.forEach(s => {
                 const tr = document.createElement('tr');
-                const estadoClass = s.estado ? s.estado.replace(/\s+/g, '.') : '';
-                const fechaMod = s.fechaEdicion ? `(Ed.) ${formatTimestamp(s.fechaEdicion)}` : formatTimestamp(s.timestamp);
+                tr.dataset.id = s.id;
+                
+                if (s.observacionesPlanificacion && s.observacionesPlanificacion.trim() !== '') {
+                    tr.classList.add('has-observation');
+                }
+                
+                if (s.notificacionPara === 'planificador') {
+                    tr.classList.add('fila-notificacion');
+                }
+
+                let reqContent;
+                if (s.numRequerimiento && s.numRequerimiento.startsWith('15')) {
+                    reqContent = `<a href="https://app.fixeat.cl/maquipan/services?tableSearch=${s.numRequerimiento}" target="_blank" rel="noopener noreferrer" class="req-link">${s.numRequerimiento}</a>`;
+                } else if (s.numRequerimiento) {
+                    reqContent = `<a href="http://st.maquipanst.com/maquipan/st2/admin.php?mod=ficha_tecnico&req=${s.numRequerimiento}" target="_blank" rel="noopener noreferrer" class="req-link">${s.numRequerimiento}</a>`;
+                } else {
+                    reqContent = 'N/A';
+                }
+
+                // --- LÓGICA DE DIRECCIÓN COMBINADA ---
+                let direccionCompleta = s.direccion || '';
+                if (s.comuna) direccionCompleta += `, ${s.comuna}`;
+                if (s.region) direccionCompleta += `, ${s.region}`;
+                
+                let direccionContent = 'N/A';
+                if (direccionCompleta.trim() !== ', ') { // Si no está vacío
+                     const encodedDireccion = encodeURIComponent(direccionCompleta);
+                     direccionContent = `<a href="https://www.google.com/maps/search/?api=1&query=${encodedDireccion}" target="_blank" rel="noopener noreferrer" class="req-link">${direccionCompleta}</a>`;
+                }
+
+                const assignedTecnicos = s.tecnicos || [];
                 tr.innerHTML = `
-                    <td>${s.numRequerimiento || 'N/A'}</td>
-                    <td>${s.cliente || 'N/A'}</td>
-                    <td>${displayCurrency(s.montoServicio)}</td> <td>${s.tipoServicio || 'N/A'}</td> <td>${formatDateString(s.fechaProgramacion)}</td>
-                    <td>${formatDateString(s.fechaAsignada)}</td>
-                    <td>${fechaMod}</td>
-                    <td><span class="status status-${estadoClass}">${s.estado || 'N/A'}</span></td>
+                    <td>
+                        ${reqContent}
+                        ${s.notificacionPara === 'planificador' ? `<span class="notification-dot" title="${s.notificacionMensaje || 'Nueva actualización del ejecutivo'}"></span>` : ''}
+                    </td>
+                    <td>${s.numNV || 'N/A'}</td>
+                    <td class="cliente-cell">${s.cliente || 'N/A'}</td>
+                    <td class="cliente-cell">${direccionContent}</td>
+                    <td>${s.tipoServicio || 'N/A'}</td>
+                    <td>${formatTimestamp(s.timestamp)}</td> <td><span class="status-badge ${getBadgeClass(s.tieneRepuestos)}">${s.tieneRepuestos || 'N/A'}</span></td>
+                    <td><span class="status-badge ${getBadgeClass(s.repuestosDespachados)}">${s.repuestosDespachados || 'N/A'}</span></td>
+                    <td><input type="date" name="fechaAsignada" value="${s.fechaAsignada || ''}"></td>
+                    <td><input type="time" name="horaTraslado" value="${s.horaTraslado || ''}"></td>
+                    <td><input type="time" name="horaInicio" value="${s.horaInicio || ''}"></td>
+                    <td><input type="time" name="horaTermino" value="${s.horaTermino || ''}"></td>
+                    <td>
+                        <div class="tecnico-display">
+                            <div class="tecnico-names">${assignedTecnicos.join(', ') || 'No asignado'}</div>
+                            <button class="btn-select-tecnicos" data-id="${s.id}">Seleccionar</button>
+                        </div>
+                    </td>
+                    <td>
+                        <select name="estado">
+                            <option value="Pendiente" ${s.estado === 'Pendiente' ? 'selected' : ''}>Pendiente</option>
+                            <option value="Confirmado" ${s.estado === 'Confirmado' ? 'selected' : ''}>Confirmado</option>
+                            <option value="EJECUTADO" ${s.estado === 'EJECUTADO' ? 'selected' : ''}>EJECUTADO</option>
+                            <option value="Esperando Repuestos" ${s.estado === 'Esperando Repuestos' ? 'selected' : ''}>Esperando Repuestos</option>
+                            <option value="Otros" ${s.estado === 'Otros' ? 'selected' : ''}>Otros</option>
+                        </select>
+                    </td>
                     <td><div class="action-cell">
-                        <button class="btn-detail" data-id="${s.id}">Detalle</button>
-                        <button class="btn-edit" data-id="${s.id}">Editar</button>
-                        <button class="btn-delete" data-id="${s.id}">Eliminar</button>
+                        <button class="btn-detail" data-id="${s.id}" title="Editar Detalles">Editar</button>
+                        <button class="btn-add-day" data-id="${s.id}" title="Añadir otro día de servicio" style="background-color: var(--success); color: white;">+ Día</button>
+                        <button class="btn-delete" data-id="${s.id}" title="Eliminar Servicio">Eliminar</button>
                     </div></td>`;
-                ui.misSolicitudesTbody.appendChild(tr);
+                ui.tablaServiciosBody.appendChild(tr);
+                const statusSelect = tr.querySelector('select[name="estado"]');
+                styleStatusDropdown(statusSelect, s.estado);
             });
         }
 
-        ui.loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            ui.errorMessage.style.display = 'none';
-            auth.signInWithEmailAndPassword(ui.emailInput.value, ui.passwordInput.value)
-                .catch((error) => { ui.errorMessage.textContent = 'Error: ' + error.message; ui.errorMessage.style.display = 'block'; });
-        });
-        ui.registerButton.addEventListener('click', () => {
-            if (!ui.emailInput.value || !ui.passwordInput.value) {
-                ui.errorMessage.textContent = 'Ingresa correo y contraseña para registrar.';
-                ui.errorMessage.style.display = 'block'; return;
-            }
-            auth.createUserWithEmailAndPassword(ui.emailInput.value, ui.passwordInput.value)
-                .then(() => { alert('¡Ejecutivo registrado! Ahora inicia sesión.'); ui.loginForm.reset(); })
-                .catch((error) => { ui.errorMessage.textContent = 'Error: ' + error.message; ui.errorMessage.style.display = 'block'; });
-        });
-        ui.logoutButton.addEventListener('click', () => auth.signOut());
-
-        ui.searchInput.addEventListener('input', renderTable);
-        ui.statusFilter.addEventListener('change', renderTable);
-
-        ui.misSolicitudesTbody.addEventListener('click', async (e) => {
-            const button = e.target.closest('button');
-            if (!button || !button.dataset.id) return;
-            const serviceId = button.dataset.id;
-            const action = button.classList;
-            if (action.contains('btn-delete')) {
-                if (confirm('¿Estás seguro de que deseas eliminar este servicio?')) {
-                    await db.collection('servicios').doc(serviceId).delete().catch(err => alert("Error al eliminar"));
-                }
-            } else if (action.contains('btn-edit')) {
-                const serviceToEdit = misServiciosCache.find(s => s.id === serviceId);
-                if (serviceToEdit) populateFormForEdit(serviceToEdit);
-            } else if (action.contains('btn-detail')) {
-                const service = misServiciosCache.find(s => s.id === serviceId);
-                if(service) openModal(service);
-            }
-        });
-
-        ui.formEjecutivo.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const serviceId = ui.editServiceId.value;
-            const montoSinFormato = ui.montoServicio.value.replace(/\$|\./g, '');
-            const datosServicio = {
-                numRequerimiento: ui.numRequerimiento.value,
-                numNV: ui.numNV.value,
-                cliente: ui.cliente.value,
-                montoServicio: montoSinFormato,
-                tipoServicio: ui.tipoServicio.value,
-                tieneRepuestos: ui.tieneRepuestos.value,
-                repuestosDespachados: ui.tieneRepuestos.value === 'Sí' ? ui.repuestosDespachados.value : 'N/A',
-                direccion: ui.direccion.value,
-                fechaProgramacion: ui.fechaProgramacion.value,
-                nomContacto: ui.nomContacto.value,
-                numContacto: ui.numContacto.value,
-                infoServicio: ui.infoServicio.value,
+        function renderPagination() {
+            const totalServices = state.filteredServices.length;
+            const { currentPage, rowsPerPage } = state.pagination;
+            const totalPages = Math.ceil(totalServices / rowsPerPage);
+            const start = (currentPage - 1) * rowsPerPage + 1;
+            const end = Math.min(currentPage * rowsPerPage, totalServices);
+            ui.resultsInfo.textContent = totalServices > 0 ? `Mostrando ${start}-${end} de ${totalServices} resultados.` : 'No hay resultados.';
+            ui.paginationControls.innerHTML = '';
+            if (totalPages <= 1) return;
+            const createButton = (text, page, isDisabled = false, isActive = false) => {
+                const btn = document.createElement('button');
+                btn.innerHTML = text; btn.disabled = isDisabled;
+                if (isActive) btn.classList.add('active');
+                btn.addEventListener('click', () => { state.pagination.currentPage = page; renderAll(); });
+                return btn;
             };
-            try {
-                if (serviceId) {
-                    datosServicio.fechaEdicion = firebase.firestore.FieldValue.serverTimestamp();
-                    await db.collection('servicios').doc(serviceId).update(datosServicio);
-                    alert('¡Servicio actualizado con éxito!');
-                } else {
-                    datosServicio.vendedor = currentUser.email;
-                    datosServicio.estado = 'Pendiente';
-                    datosServicio.timestamp = firebase.firestore.FieldValue.serverTimestamp();
-                    await db.collection('servicios').add(datosServicio);
-                    alert('¡Solicitud generada con éxito!');
+            ui.paginationControls.appendChild(createButton('‹', currentPage - 1, currentPage === 1));
+            for (let i = 1; i <= totalPages; i++) {
+                ui.paginationControls.appendChild(createButton(i, i, false, i === currentPage));
+            }
+            ui.paginationControls.appendChild(createButton('›', currentPage + 1, currentPage === totalPages));
+        }
+
+        function updateSortIndicators() {
+            document.querySelectorAll('th[data-sort]').forEach(header => {
+                const indicator = header.querySelector('.sort-indicator');
+                if(!indicator) return;
+                const column = header.dataset.sort;
+                indicator.textContent = (column === state.sortConfig.column) ? (state.sortConfig.order === 'asc' ? ' ▲' : ' ▼') : '';
+            });
+        }
+
+        async function openModal(modalId, service) {
+            if (modalId === 'service-modal' && service) {
+                if (service.notificacionPara === 'planificador') {
+                    try {
+                        await actualizarServicio(service.id, {
+                            notificacionPara: '',
+                            notificacionMensaje: ''
+                        });
+                    } catch (err) {
+                        console.error("Error al marcar la notificación como leída:", err);
+                    }
                 }
-                resetForm();
-            } catch (error) {
-                console.error("Error guardando datos:", error);
-                alert("Ocurrió un error al guardar la solicitud.");
+                
+                const m = ui.modal;
+                m.titleReqNumDisplay.textContent = service.numRequerimiento || 'N/A';
+                
+                // Campos Simples
+                m.numRequerimientoInput.value = service.numRequerimiento || '';
+                m.numNVInput.value = service.numNV || '';
+                m.clienteInput.value = service.cliente || '';
+                m.montoServicioInput.value = displayCurrency(service.montoServicio).replace('$','').trim();
+                m.tipoServicioSelect.value = service.tipoServicio || '';
+                
+                // --- CARGAR DIRECCIÓN DESGLOSADA ---
+                m.regionSelect.value = service.region || '';
+                cargarComunasModal(service.region || ''); // Carga las comunas
+                m.comunaSelect.value = service.comuna || ''; // Selecciona la comuna
+                m.direccionInput.value = service.direccion || ''; // Calle y número
+
+                m.vendedorInput.value = service.vendedor || '';
+                m.contactoInput.value = service.nomContacto || '';
+                m.telefonoInput.value = service.numContacto || '';
+                m.tieneRepuestosSelect.value = service.tieneRepuestos || 'No';
+                m.repDespachadosSelect.value = service.repuestosDespachados || 'No';
+                
+                m.estadoDisplay.textContent = service.estado || 'N/A';
+                m.tecnicoDisplay.textContent = (service.tecnicos || []).join(', ') || 'Sin Asignar';
+                m.fechaAsignadaDisplay.textContent = service.fechaAsignada || 'N/A';
+                m.horaTrasladoDisplay.textContent = service.horaTraslado || 'N/A';
+                m.horaInicioDisplay.textContent = service.horaInicio || 'N/A';
+                m.horaTerminoDisplay.textContent = service.horaTermino || 'N/A';
+                m.fechaSolicitudDisplay.textContent = formatTimestamp(service.timestamp);
+                m.fechaEdicionDisplay.textContent = service.fechaEdicion ? formatTimestamp(service.fechaEdicion) : 'Sin ediciones';
+                
+                m.infoServicioTextarea.value = service.infoServicio || '';
+                m.observaciones.value = service.observacionesPlanificacion || '';
+
+                m.guardarBtn.dataset.serviceId = service.id;
+                
+                listenToChat(service.id);
+                ui.modal.chatForm.dataset.serviceId = service.id;
+
+            } else if (modalId === 'tecnico-select-modal') {
+                const serviceId = service;
+                const serviceData = state.serviciosCache.find(s => s.id === serviceId);
+                if (!serviceData) return;
+                const assignedTecnicos = serviceData.tecnicos || [];
+                ui.tecnicoModal.list.innerHTML = '';
+                state.tecnicosCache.forEach(tecnico => {
+                    const isChecked = assignedTecnicos.includes(tecnico);
+                    const itemId = `tecnico-check-${tecnico.replace(/\s+/g, '-')}`;
+                    ui.tecnicoModal.list.innerHTML += `<div class="tecnico-check-item"><input type="checkbox" id="${itemId}" value="${tecnico}" ${isChecked ? 'checked' : ''}><label for="${itemId}">${tecnico}</label></div>`;
+                });
+                ui.tecnicoModal.guardarBtn.dataset.serviceId = serviceId;
+            } else if (modalId === 'bulk-add-modal') {
+                ui.bulkAddModal.pasteArea.value = '';
             }
-        });
-
-        function populateFormForEdit(service) {
-            ui.numRequerimiento.value = service.numRequerimiento || '';
-            ui.numNV.value = service.numNV || '';
-            ui.cliente.value = service.cliente || '';
-            ui.montoServicio.value = displayCurrency(service.montoServicio).replace('$','').trim();
-            ui.tipoServicio.value = service.tipoServicio || '';
-            ui.tieneRepuestos.value = service.tieneRepuestos || 'No';
-            ui.repuestosDespachados.value = service.repuestosDespachados || 'No';
-            ui.direccion.value = service.direccion || '';
-            ui.fechaProgramacion.value = service.fechaProgramacion || '';
-            ui.nomContacto.value = service.nomContacto || '';
-            ui.numContacto.value = service.numContacto || '';
-            ui.infoServicio.value = service.infoServicio || '';
-            ui.editServiceId.value = service.id;
-            ui.formTitle.textContent = `✏️ Editando Req #${service.numRequerimiento}`;
-            ui.submitButton.textContent = 'Guardar Cambios';
-            ui.cancelButton.style.display = 'inline-block';
-            handleRepuestosChange();
-            ui.formEjecutivo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            document.getElementById(modalId).classList.add('visible');
         }
 
-        function resetForm() {
-            ui.formEjecutivo.reset();
-            ui.editServiceId.value = '';
-            ui.formTitle.textContent = '📝 Generar Nueva Solicitud';
-            ui.submitButton.textContent = 'Generar Solicitud';
-            ui.cancelButton.style.display = 'none';
-            handleRepuestosChange();
-            ui.tipoServicio.value = '';
-            ui.tieneRepuestos.value = 'No';
-            ui.repuestosDespachados.value = 'No';
-            ui.montoServicio.value = '';
-        }
-
-        function handleRepuestosChange() {
-            const tieneRepuestos = ui.tieneRepuestos.value === 'Sí';
-            ui.repuestosDespachados.disabled = !tieneRepuestos;
-            if (tieneRepuestos) {
-                if (ui.editServiceId.value === '') ui.repuestosDespachados.value = 'Pendiente';
-            } else {
-                ui.repuestosDespachados.value = 'No';
-            }
-        }
-
-        ui.cancelButton.addEventListener('click', resetForm);
-        ui.tieneRepuestos.addEventListener('change', handleRepuestosChange);
-
-        function openModal(service) {
-            ui.modal.reqNum.textContent = `Detalles: Req #${service.numRequerimiento || 'N/A'}`;
-            ui.modal.cliente.textContent = service.cliente || 'N/A';
-            ui.modal.numNV.textContent = service.numNV || 'N/A';
-            ui.modal.direccion.textContent = service.direccion || 'N/A';
-            ui.modal.contacto.textContent = service.nomContacto || 'N/A';
-            ui.modal.telefono.textContent = service.numContacto || 'N/A';
-            ui.modal.montoServicio.textContent = displayCurrency(service.montoServicio);
-            ui.modal.tipoServicio.textContent = service.tipoServicio || 'N/A';
-            ui.modal.tieneRepuestos.textContent = service.tieneRepuestos || 'N/A';
-            ui.modal.repDespachados.textContent = service.tieneRepuestos === 'Sí' ? (service.repuestosDespachados || 'Pendiente') : 'N/A';
-            ui.modal.estado.textContent = service.estado || 'N/A';
-            ui.modal.fechaSolicitud.textContent = formatTimestamp(service.timestamp);
-            ui.modal.fechaEdicion.textContent = service.fechaEdicion ? formatTimestamp(service.fechaEdicion) : 'Sin ediciones';
-            ui.modal.infoServicio.textContent = service.infoServicio || 'N/A';
-            ui.modal.obsPlanificacion.textContent = service.observacionesPlanificacion || 'Sin observaciones.';
-            ui.modal.fechaProgramacion.textContent = formatDateString(service.fechaProgramacion);
-            ui.modal.fechaAsignada.textContent = formatDateString(service.fechaAsignada);
-
-            listenToChat(service.id);
-            ui.modal.chatForm.dataset.serviceId = service.id;
-
-            ui.modal.overlay.classList.add('visible');
-        }
-
-        function closeModal() {
-            ui.modal.overlay.classList.remove('visible');
-            if (unsubscribeChat) {
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('visible');
+             if (unsubscribeChat) {
                 unsubscribeChat();
                 unsubscribeChat = null;
-                ui.modal.chatHistory.innerHTML = '';
             }
         }
-        ui.modal.closeBtn.addEventListener('click', closeModal);
-        ui.modal.overlay.addEventListener('click', (e) => {
-            if (e.target === ui.modal.overlay) closeModal();
-        });
 
         function listenToChat(serviceId) {
             if (unsubscribeChat) unsubscribeChat();
             unsubscribeChat = db.collection('servicios').doc(serviceId).collection('chat')
                 .orderBy('timestamp', 'asc')
-                .onSnapshot(snapshot => {
-                    renderChatMessages(snapshot.docs);
-                }, error => console.error("Error al escuchar chat:", error));
+                .onSnapshot(snapshot => renderChatMessages(snapshot.docs), 
+                error => console.error("Error al escuchar chat:", error));
         }
 
         function renderChatMessages(messages) {
             ui.modal.chatHistory.innerHTML = '';
-            if (!currentUser) return;
-            // ¡IMPORTANTE! Personaliza esta lista con los correos reales de los planificadores.
+            if (!state.currentUser) return;
             const plannerEmails = ['cpimentel@maquipan.cl', 'mehlers@maquipan.cl'];
-
             messages.forEach(doc => {
                 const msg = doc.data();
                 const msgDiv = document.createElement('div');
                 const senderName = msg.remitente ? msg.remitente.split('@')[0] : 'Anónimo';
-
                 const isPlanner = plannerEmails.includes(msg.remitente);
-
                 msgDiv.classList.add('chat-message', isPlanner ? 'planificador' : 'ejecutiva');
                 msgDiv.innerHTML = `<span class="sender">${senderName}</span><p>${msg.mensaje}</p>`;
                 ui.modal.chatHistory.appendChild(msgDiv);
@@ -810,85 +1285,243 @@
             ui.modal.chatHistory.scrollTop = ui.modal.chatHistory.scrollHeight;
         }
 
-ui.modal.chatForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const serviceId = e.target.dataset.serviceId;
-    const mensaje = ui.modal.chatInput.value.trim();
-    if (!mensaje || !serviceId || !currentUser) return;
-    
-    // ¡IMPORTANTE! Debes tener la misma lista de correos de planificadores aquí.
-    const plannerEmails = ['cpimentel@maquipan.cl', 'mehlers@maquipan.cl'];
+        // --- LISTENERS ---
+        ui.loginForm.addEventListener('submit', (e) => { e.preventDefault(); auth.signInWithEmailAndPassword(ui.emailInput.value, ui.passwordInput.value).catch(err => { ui.errorMessage.textContent = 'Error: Credenciales incorrectas.'; ui.errorMessage.style.display = 'block'; }); });
+        ui.logoutButton.addEventListener('click', () => auth.signOut());
 
-    const messageData = {
-        remitente: currentUser.email,
-        mensaje: mensaje,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    
-    try {
-        // 1. Añade el mensaje al chat
-        await db.collection('servicios').doc(serviceId).collection('chat').add(messageData);
+        function applyTheme(isDark) { document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light'); localStorage.setItem('theme', isDark ? 'dark' : 'light'); }
+        ui.themeToggle.addEventListener('change', (e) => applyTheme(e.target.checked));
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        applyTheme(savedTheme === 'dark');
+        ui.themeToggle.checked = savedTheme === 'dark';
 
-        // 2. Actualiza el servicio para la notificación visual (parpadeo) del planificador
-        const serviceDoc = misServiciosCache.find(s => s.id === serviceId);
-        const datosNotificacionVisual = {
-            notificacionPara: 'planificador',
-            notificacionMensaje: `Nuevo mensaje de ${currentUser.email.split('@')[0]} en Req #${serviceDoc?.numRequerimiento || ''}`
-        };
-        await db.collection('servicios').doc(serviceId).update(datosNotificacionVisual);
+        ui.modalCloseBtns.forEach(btn => btn.addEventListener('click', () => closeModal(btn.dataset.modalId)));
+        document.querySelectorAll('.modal-overlay').forEach(overlay => overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(overlay.id); }));
         
-        // 3. Crea una notificación persistente para CADA planificador en la lista
-        const batch = db.batch();
-        plannerEmails.forEach(plannerEmail => {
-            const notificacionRef = db.collection('notificaciones').doc();
-            const notificacionData = {
-                userId: plannerEmail, // Email del planificador a notificar
-                serviceId: serviceId,
-                serviceReqNum: serviceDoc?.numRequerimiento || '',
-                mensaje: `Nuevo mensaje de ${currentUser.email.split('@')[0]} en Req #${serviceDoc?.numRequerimiento || ''}`,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                leido: false
-            };
-            batch.set(notificacionRef, notificacionData);
+        document.querySelectorAll('th[data-sort]').forEach(header => {
+            header.addEventListener('click', () => {
+                const column = header.dataset.sort;
+                state.sortConfig.order = (state.sortConfig.column === column && state.sortConfig.order === 'asc') ? 'desc' : 'asc';
+                state.sortConfig.column = column;
+                applyFiltersAndRender();
+            });
         });
-        await batch.commit();
+        
+        ui.filtroEstado.addEventListener('change', () => { state.pagination.currentPage = 1; applyFiltersAndRender(); });
+        ui.filtroVendedor.addEventListener('change', () => { state.pagination.currentPage = 1; applyFiltersAndRender(); });
+        ui.filtroTipoServicio.addEventListener('change', () => { state.pagination.currentPage = 1; applyFiltersAndRender(); });
+        ui.filtroTecnico.addEventListener('change', () => { state.pagination.currentPage = 1; applyFiltersAndRender(); }); // LISTENER TÉCNICO
+        ui.filtroBusqueda.addEventListener('input', () => { state.pagination.currentPage = 1; applyFiltersAndRender(); });
 
-        ui.modal.chatInput.value = '';
-    } catch (error) {
-        console.error("Error enviando mensaje y notificaciones:", error);
-        alert('No se pudo enviar el mensaje.');
-    }
-});
+        ui.tablaServiciosBody.addEventListener('change', async (e) => {
+            const target = e.target;
+            const validNames = ['estado', 'fechaAsignada', 'horaTraslado', 'horaInicio', 'horaTermino'];
+            if (!validNames.includes(target.name)) return;
+            const id = target.closest('tr').dataset.id;
+            const service = state.serviciosCache.find(s => s.id === id);
+            if (!service) return;
+            const datos = { [target.name]: target.value };
+            await actualizarServicio(id, datos);
+        });
+        
+        ui.tablaServiciosBody.addEventListener('click', async (e) => {
+            const button = e.target.closest('button');
+            if (button) { // Ensure button exists
+                const serviceId = button.dataset.id;
+                if (!serviceId) return;
 
-        function formatTimestamp(ts) { if(!ts?.toDate) return 'N/A'; const d=ts.toDate(); return `${d.toLocaleDateString('es-CL')} ${d.toLocaleTimeString('es-CL').slice(0,5)}`; }
-        function formatDateString(dateStr) {
-            if (!dateStr || dateStr === 'N/A') return 'N/A';
-            const parts = dateStr.split('-');
-            if (parts.length !== 3) return dateStr;
-            return `${parts[2]}/${parts[1]}/${parts[0]}`;
-        }
-        function formatCurrency(input) {
-            let value = input.value.replace(/[^0-9]/g, '');
-            if (value === '') { input.value = ''; return; }
-            let numericValue = parseInt(value, 10);
-            value = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(numericValue);
-            input.value = value.replace('CLP', '').trim();
-        }
-        function displayCurrency(value) {
-            if (value === undefined || value === null || value === '') return 'N/A';
-            const cleanValue = String(value).replace(/\$|\./g, '');
-            const numericValue = parseInt(cleanValue, 10);
-            if (isNaN(numericValue)) return 'N/A';
-            return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 }).format(numericValue);
-        }
+                if (button.classList.contains('btn-delete')) {
+                    if (confirm('¿Seguro que quieres eliminar este servicio?')) await eliminarServicio(serviceId);
+                } else if (button.classList.contains('btn-detail')) {
+                    const service = state.serviciosCache.find(s => s.id === serviceId);
+                    if (service) openModal('service-modal', service);
+                } else if (button.classList.contains('btn-select-tecnicos')) {
+                    openModal('tecnico-select-modal', serviceId);
+                } else if (button.classList.contains('btn-add-day')) {
+                    await duplicarServicio(serviceId);
+                }
+            } else if (e.target.closest('a')) {
+                // This allows the default link behavior (opening Google Maps) to proceed
+                return;
+            }
+        });
+        
+        ui.modal.guardarBtn.addEventListener('click', async () => {
+            const id = ui.modal.guardarBtn.dataset.serviceId;
+            const service = state.serviciosCache.find(s => s.id === id);
+            if (!service) return;
+            
+            const datosParaActualizar = {
+                numRequerimiento: ui.modal.numRequerimientoInput.value,
+                cliente: ui.modal.clienteInput.value,
+                numNV: ui.modal.numNVInput.value,
+                montoServicio: ui.modal.montoServicioInput.value.replace(/\$|\./g, ''),
+                tipoServicio: ui.modal.tipoServicioSelect.value,
+                
+                // --- GUARDAR DIRECCIÓN DESGLOSADA ---
+                region: ui.modal.regionSelect.value,
+                comuna: ui.modal.comunaSelect.value,
+                direccion: ui.modal.direccionInput.value,
 
-        function applyTheme(theme) {
-            document.documentElement.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
-            ui.themeToggle.checked = theme === 'dark';
-        }
-        ui.themeToggle.addEventListener('change', (e) => applyTheme(e.target.checked ? 'dark' : 'light'));
-        applyTheme(localStorage.getItem('theme') || 'dark');
+                vendedor: ui.modal.vendedorInput.value,
+                nomContacto: ui.modal.contactoInput.value,
+                numContacto: ui.modal.telefonoInput.value,
+                tieneRepuestos: ui.modal.tieneRepuestosSelect.value,
+                repuestosDespachados: ui.modal.repDespachadosSelect.value,
+                infoServicio: ui.modal.infoServicioTextarea.value,
+                observacionesPlanificacion: ui.modal.observaciones.value,
+            };
+            
+            await actualizarServicio(id, datosParaActualizar);
+            
+            if (datosParaActualizar.observacionesPlanificacion && datosParaActualizar.observacionesPlanificacion !== (service.observacionesPlanificacion || '')) {
+                const notificacionData = {
+                    userId: service.vendedor,
+                    serviceId: service.id,
+                    serviceReqNum: service.numRequerimiento,
+                    mensaje: `El planificador añadió una observación al Req #${service.numRequerimiento}.`,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    leido: false
+                };
+                await db.collection('notificaciones').add(notificacionData);
+            }
+            alert('Servicio actualizado correctamente.');
+            closeModal('service-modal');
+        });
+        
+        ui.modal.chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const serviceId = e.target.dataset.serviceId;
+            const mensaje = ui.modal.chatInput.value.trim();
+            if (!mensaje || !serviceId || !state.currentUser) return;
+            const messageData = {
+                remitente: state.currentUser.email,
+                mensaje: mensaje,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            try {
+                await db.collection('servicios').doc(serviceId).collection('chat').add(messageData);
+                const service = state.serviciosCache.find(s => s.id === serviceId);
+                const notificacionData = {
+                    userId: service.vendedor,
+                    serviceId: service.id,
+                    serviceReqNum: service.numRequerimiento,
+                    mensaje: `Nuevo mensaje del planificador en Req #${service.numRequerimiento}.`,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    leido: false
+                };
+                await db.collection('notificaciones').add(notificacionData);
+                ui.modal.chatInput.value = '';
+            } catch (error) {
+                console.error("Error enviando mensaje y notificación:", error);
+                alert('No se pudo enviar el mensaje.');
+            }
+        });
+
+        ui.tecnicoModal.guardarBtn.addEventListener('click', async () => {
+            const id = ui.tecnicoModal.guardarBtn.dataset.serviceId;
+            const selectedTecnicos = Array.from(ui.tecnicoModal.list.querySelectorAll('input:checked')).map(input => input.value);
+            await actualizarServicio(id, { tecnicos: selectedTecnicos });
+            closeModal('tecnico-select-modal');
+        });
+        ui.tecnicoModal.cancelarBtn.addEventListener('click', () => closeModal('tecnico-select-modal'));
+        
+        ui.abrirModalMasivoBtn.addEventListener('click', () => openModal('bulk-add-modal'));
+
+        ui.bulkAddModal.saveBtn.addEventListener('click', async () => {
+            const pasteData = ui.bulkAddModal.pasteArea.value.trim();
+            if (!pasteData) return alert('El área de texto está vacía.');
+
+            const rows = pasteData.split('\n');
+            const batch = db.batch();
+            let servicesToCreate = 0;
+            const errors = [];
+
+            rows.forEach((row, index) => {
+                if (!row.trim()) return;
+                const cols = row.split('\t');
+                const [numRequerimiento, numNV, cliente, montoServicio, tipoServicio, vendedor, fechaAsignada, horaTraslado, horaInicio, horaTermino, tecnicoInput, infoServicio] = cols.map(c => c ? c.trim() : '');
+
+                if (!cliente) {
+                    errors.push(`Fila ${index + 1}: El campo "Cliente" es obligatorio.`);
+                    return;
+                }
+
+                const tecnicos = tecnicoInput ? tecnicoInput.split(',').map(t => t.trim()) : [];
+                const newServiceRef = db.collection('servicios').doc();
+                const serviceData = {
+                    numRequerimiento, numNV, cliente, 
+                    montoServicio: montoServicio.replace(/\$|\./g, ''),
+                    tipoServicio, vendedor, fechaAsignada,
+                    horaTraslado, horaInicio, horaTermino,
+                    tecnicos, infoServicio,
+                    estado: 'Pendiente',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    fechaEdicion: firebase.firestore.FieldValue.serverTimestamp(),
+                    tieneRepuestos: 'No',
+                    repuestosDespachados: 'N/A',
+                };
+                if (serviceData.fechaAsignada && serviceData.tecnicos.length > 0) {
+                    serviceData.estado = 'Confirmado';
+                }
+                batch.set(newServiceRef, serviceData);
+                servicesToCreate++;
+            });
+
+            if (errors.length > 0) {
+                alert(`Se encontraron errores:\n\n${errors.join('\n')}`);
+                return;
+            }
+            if (servicesToCreate === 0) return alert('No hay servicios válidos para guardar.');
+
+            try {
+                await batch.commit();
+                alert(`${servicesToCreate} servicio(s) agregado(s) correctamente.`);
+                closeModal('bulk-add-modal');
+            } catch (error) {
+                console.error("Error al guardar servicios masivamente: ", error);
+                alert("Ocurrió un error al intentar guardar.");
+            }
+        });
+        
+        ui.exportarCsvBtn.addEventListener('click', () => {
+             if (state.filteredServices.length === 0) return alert('No hay servicios para exportar.');
+            
+            // Se agregaron Región y Comuna a los headers y rows
+            const headers = ["Nº Requerimiento", "Nº NV", "Cliente", "Monto Servicio", "Tipo Servicio", "Vendedor", "Tiene Repuestos", "Repuestos Despachados", "Fecha Creación", "Fecha Última Edición", "Fecha Asignada", "Hora Traslado", "Hora Inicio", "Hora Término", "Técnico(s) Asignado(s)", "Estado", "Info. Servicio", "Observaciones Planificación", "Región", "Comuna", "Dirección", "Contacto", "Teléfono"];
+            
+            const rows = state.filteredServices.map(s => [
+                s.numRequerimiento, 
+                s.numNV, 
+                s.cliente, 
+                displayCurrency(s.montoServicio), 
+                s.tipoServicio, 
+                s.vendedor, 
+                s.tieneRepuestos, 
+                s.repuestosDespachados, 
+                s.timestamp ? formatTimestamp(s.timestamp) : '', 
+                s.fechaEdicion ? formatTimestamp(s.fechaEdicion) : '', 
+                s.fechaAsignada, 
+                s.horaTraslado, 
+                s.horaInicio, 
+                s.horaTermino, 
+                (s.tecnicos || []).join('; '), 
+                s.estado, 
+                s.infoServicio, 
+                s.observacionesPlanificacion, 
+                s.region, 
+                s.comuna, 
+                s.direccion, 
+                s.nomContacto, 
+                s.numContacto
+            ].map(val => `"${(val || '').toString().replace(/"/g, '""')}"`));
+            
+            const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+            const link = document.createElement('a');
+            link.setAttribute('href', encodeURI(csvContent));
+            link.setAttribute('download', `servicios_planificador_${new Date().toLocaleDateString('es-CL')}.csv`);
+            link.click();
+        });
 
     </script>
 </body>
